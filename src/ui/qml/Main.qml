@@ -1,30 +1,47 @@
 import QtQuick
 import QtQuick.Controls
+import QtQuick.Layouts
+import "components"
+import "views"
 
 ApplicationWindow {
-    width: 800
-    height: 600
+    width: 1100
+    height: 750
     visible: true
     title: "FronterMind - Harness"
     color: "#1e1e2e"
 
-    Column {
-        anchors.centerIn: parent
-        spacing: 20
+    ColumnLayout {
+        anchors.fill: parent
+        spacing: 0
 
-        Text {
-            text: backend.statusText
-            color: "#cdd6f4"
-            font.pixelSize: 24
-            anchors.horizontalCenter: parent.horizontalCenter
+        RowLayout {
+            Layout.fillWidth: true
+            Layout.fillHeight: true
+            spacing: 0
+
+            Sidebar {
+                id: sidebar
+                Layout.fillHeight: true
+                currentIndex: stackLayout.currentIndex // <-- AÑADE ESTO
+                onViewRequested: function(viewName) {
+                    stackLayout.currentIndex = (viewName === "chat") ? 0 : 1;
+                }
+            }
+
+            StackLayout {
+                id: stackLayout
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                currentIndex: 0
+
+                ChatView {}
+                SettingsView {}
+            }
         }
 
-        Button {
-            text: "Probar comunicación con el Core"
-            anchors.horizontalCenter: parent.horizontalCenter
-            onClicked: {
-                backend.handleUserAction("¡Hola desde QML!")
-            }
+        StatusBar {
+            Layout.fillWidth: true
         }
     }
 }

@@ -18,7 +18,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
-find_package(Qt6 REQUIRED COMPONENTS Quick Qml QmlPrivate)
+find_package(Qt6 REQUIRED COMPONENTS Quick Qml QmlPrivate QuickDialogs2)
 
 add_subdirectory(src/platform)
 add_subdirectory(src/core)
