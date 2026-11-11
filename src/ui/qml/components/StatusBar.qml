@@ -1,18 +1,13 @@
 import QtQuick
 import QtQuick.Layouts
+import "../components"
 
 Rectangle {
     id: root
-    height: 30
-    color: "#11111b" // Muy oscuro
+    height: 32
+    color: "#11111b"
 
-    // Línea superior sutil
-    Rectangle {
-        width: parent.width
-        height: 1
-        color: "#313244"
-        anchors.top: parent.top
-    }
+    Rectangle { width: parent.width; height: 1; color: "#313244"; anchors.top: parent.top }
 
     RowLayout {
         anchors.fill: parent
@@ -20,15 +15,39 @@ Rectangle {
         anchors.rightMargin: 15
         spacing: 20
 
-        // Memoria de la App (Alineado a la izquierda)
-        Text { text: "App: " + backend.appMemory; color: "#f38ba8"; font.pixelSize: 12 }
+        // App Memory (Icono de Terminal)
+        Row {
+            spacing: 6
+            Icon { iconCode: "\uf120"; iconColor: "#f38ba8"; font.pixelSize: 12; anchors.verticalCenter: parent.verticalCenter }
+            Text { text: "App: " + backend.appMemory; color: "#f38ba8"; font.pixelSize: 12; anchors.verticalCenter: parent.verticalCenter }
+        }
 
-        Text { text: "Modelo: " + backend.currentModel; color: "#a6adc8"; font.pixelSize: 12 }
+        // Model (Icono de Carpeta)
+        Row {
+            spacing: 6
+            Icon { iconCode: "\uf07b"; iconColor: "#a6adc8"; font.pixelSize: 12; anchors.verticalCenter: parent.verticalCenter }
+            Text { text: backend.currentModel; color: "#a6adc8"; font.pixelSize: 12; anchors.verticalCenter: parent.verticalCenter }
+        }
 
-        Item { Layout.fillWidth: true } // <-- Este espaciador empuja el resto a la derecha
+        Item { Layout.fillWidth: true }
 
-        Text { text: "CPU: " + backend.cpuUsage; color: "#a6e3a1"; font.pixelSize: 12 }
-        Text { text: "RAM: " + backend.ramUsage; color: "#89b4fa"; font.pixelSize: 12 }
-        Text { text: "VRAM: " + backend.vramUsage; color: "#cba6f7"; font.pixelSize: 12 }
+        // CPU (Icono de Microchip)
+        Row {
+            spacing: 6
+            Icon { iconCode: "\uf2db"; iconColor: "#a6e3a1"; font.pixelSize: 12; anchors.verticalCenter: parent.verticalCenter }
+            Text { text: "CPU: " + backend.cpuUsage; color: "#a6e3a1"; font.pixelSize: 12; anchors.verticalCenter: parent.verticalCenter }
+        }
+        // RAM (Icono de Servidor/Memoria)
+        Row {
+            spacing: 6
+            Icon { iconCode: "\uf538"; iconColor: "#89b4fa"; font.pixelSize: 12; anchors.verticalCenter: parent.verticalCenter }
+            Text { text: "RAM: " + backend.ramUsage; color: "#89b4fa"; font.pixelSize: 12; anchors.verticalCenter: parent.verticalCenter }
+        }
+        // VRAM (Icono de Escritorio/GPU)
+        Row {
+            spacing: 6
+            Icon { iconCode: "\uf108"; iconColor: "#cba6f7"; font.pixelSize: 12; anchors.verticalCenter: parent.verticalCenter }
+            Text { text: "VRAM: " + backend.vramUsage; color: "#cba6f7"; font.pixelSize: 12; anchors.verticalCenter: parent.verticalCenter }
+        }
     }
 }

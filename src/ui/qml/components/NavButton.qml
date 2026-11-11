@@ -9,7 +9,7 @@ Button {
     property string iconCode: ""
 
     Layout.fillWidth: true
-    Layout.preferredHeight: 40 // Altura fija para la franja
+    Layout.preferredHeight: 40
 
     background: Rectangle {
         color: root.isActive ? "#45475a" : "transparent"
@@ -18,13 +18,11 @@ Button {
         Behavior on opacity { NumberAnimation { duration: 150 } }
     }
 
-    // Contenido alineado a la izquierda y estirado
-    contentItem: RowLayout {
-        spacing: 12
+    contentItem: Row {
         anchors.left: parent.left
         anchors.leftMargin: 15
-        anchors.right: parent.right
         anchors.verticalCenter: parent.verticalCenter
+        spacing: 12
 
         Icon {
             iconCode: root.iconCode
@@ -38,7 +36,6 @@ Button {
             font.pixelSize: 14
             font.bold: root.isActive
             verticalAlignment: Text.AlignVCenter
-            Layout.fillWidth: true // Esto empuja cualquier cosa a la izquierda
         }
     }
 }

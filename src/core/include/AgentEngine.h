@@ -15,6 +15,7 @@ signals:
     void errorOccurred(const QString &error);
     void startedGenerating();
     void finishedGenerating();
+    void tokensUpdated(int promptTokens, int completionTokens, int totalTokens);
 
 private:
     QNetworkAccessManager *m_networkManager;

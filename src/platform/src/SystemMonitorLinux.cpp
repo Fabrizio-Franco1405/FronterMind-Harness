@@ -29,16 +29,24 @@ public:
         if (memFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
             QTextStream in(&memFile);
             long totalMem = 0, availMem = 0;
+
+            // Regex estricta: Busca el nombre, luego espacios, luego captura el número
+            QRegularExpression totalRe("MemTotal:\\s+(\\d+)");
+            QRegularExpression availRe("MemAvailable:\\s+(\\d+)");
+
             while (!in.atEnd()) {
-                QStringList parts = in.readLine().split(QRegularExpression("\\s+"), Qt::SkipEmptyParts);
-                if (parts.size() >= 2) {
-                    if (parts[0] == "MemTotal:") totalMem = parts[1].toLong();
-                    if (parts[0] == "MemAvailable:") availMem = parts[1].toLong();
-                }
+                QString line = in.readLine();
+
+                QRegularExpressionMatch match = totalRe.match(line);
+                if (match.hasMatch()) totalMem = match.captured(1).toLong();
+
+                match = availRe.match(line);
+                if (match.hasMatch()) availMem = match.captured(1).toLong();
             }
-            if (totalMem > 0) {
-                long usedMem = (totalMem - availMem) / 1024; // MB
-                return QString::number(usedMem / 1024.0, 'f', 1) + " GB";
+
+            if (totalMem > 0 && availMem > 0) {
+                double usedGB = (totalMem - availMem) / 1024.0 / 1024.0;
+                return QString::number(usedGB, 'f', 1) + " GB";
             }
         }
         return "0 GB";
@@ -60,11 +68,13 @@ public:
         QFile statusFile("/proc/self/status");
         if (statusFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
             QTextStream in(&statusFile);
+            QRegularExpression vmRe("VmRSS:\\s+(\\d+)");
+
             while (!in.atEnd()) {
-                QStringList parts = in.readLine().split(QRegularExpression("\\s+"), Qt::SkipEmptyParts);
-                if (parts.size() >= 2 && parts[0] == "VmRSS:") {
-                    long memKb = parts[1].toLong();
-                    return QString::number(memKb / 1024) + " MB";
+                QString line = in.readLine();
+                QRegularExpressionMatch match = vmRe.match(line);
+                if (match.hasMatch()) {
+                    return QString::number(match.captured(1).toLong() / 1024) + " MB";
                 }
             }
         }

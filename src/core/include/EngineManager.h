@@ -16,7 +16,8 @@ public:
     bool isRunning() const { return m_process && m_process->state() == QProcess::Running; }
     QString serverLog() const { return m_serverLog; }
 
-    Q_INVOKABLE void startServer(const QString &binaryPath, const QString &modelPath, int gpuLayers = 99);
+    // AÑADIDO Q_INVOKABLE AQUÍ
+    Q_INVOKABLE void startServer(const QString &binaryPath, const QString &modelPath, int gpuLayers, int contextSize);
     Q_INVOKABLE void stopServer();
 
 signals:

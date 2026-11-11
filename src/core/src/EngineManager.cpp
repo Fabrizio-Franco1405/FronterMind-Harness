@@ -29,7 +29,7 @@ EngineManager::~EngineManager() {
     stopServer();
 }
 
-void EngineManager::startServer(const QString &binaryPath, const QString &modelPath, int gpuLayers) {
+void EngineManager::startServer(const QString &binaryPath, const QString &modelPath, int gpuLayers, int contextSize) {
     if (isRunning()) {
         appendLog("[Sistema] El motor ya está en ejecución.");
         return;
@@ -37,27 +37,23 @@ void EngineManager::startServer(const QString &binaryPath, const QString &modelP
 
     m_process = new QProcess(this);
 
-    // Conectar señales para leer logs y detectar el final
     connect(m_process, &QProcess::readyReadStandardOutput, this, &EngineManager::onReadyReadStandardOutput);
     connect(m_process, &QProcess::readyReadStandardError, this, &EngineManager::onReadyReadStandardError);
     connect(m_process, QOverload<int, QProcess::ExitStatus>::of(&QProcess::finished),
             this, &EngineManager::onProcessFinished);
 
-    // Configurar el proceso hijo para que muera si el padre muere (Solo Linux)
     #ifdef Q_OS_LINUX
-    // Esto es vital para evitar procesos huérfanos que retengan la VRAM
-    // Se ejecuta en el contexto del proceso hijo justo antes de exec()
     m_process->setChildProcessModifier([]() {
         ::prctl(PR_SET_PDEATHSIG, SIGTERM);
     });
     #endif
 
-    // Argumentos para llama-server
     QStringList args;
     args << "-m" << modelPath
-         << "-ngl" << QString::number(gpuLayers) // Capas en GPU
+         << "-ngl" << QString::number(gpuLayers)
+         << "-c" << QString::number(contextSize) // <-- NUEVO: Pasar contexto
          << "--host" << "127.0.0.1"
-         << "--port" << "8080"; // Puerto por defecto
+         << "--port" << "8080";
 
     appendLog("[Sistema] Iniciando: " + binaryPath + " " + args.join(" "));
 

@@ -30,10 +30,10 @@ Item {
                     Layout.bottomMargin: 10
                 }
 
-                // --- SECCIÓN 1: MOTOR Y RUTA ---
+                // --- SECCIÓN 1: MOTOR, CONTEXTO Y RUTA ---
                 Rectangle {
                     Layout.fillWidth: true
-                    Layout.preferredHeight: 150 // Un poco más alto para que respire
+                    Layout.preferredHeight: 230 // Más alto para que quepan los 3 campos
                     color: "#181825"
                     radius: 8
                     border.color: "#313244"
@@ -45,13 +45,14 @@ Item {
 
                         Text { text: "Backend de IA Local"; color: "#cba6f7"; font.pixelSize: 16; font.bold: true }
 
+                        // 1. Selector de Motor
                         RowLayout {
                             Layout.fillWidth: true
-                            Text { text: "Motor:"; color: "#a6adc8"; font.pixelSize: 14; Layout.preferredWidth: 80 }
+                            Text { text: "Motor:"; color: "#a6adc8"; font.pixelSize: 14; Layout.preferredWidth: 150 }
                             ComboBox {
                                 id: engineCombo
                                 Layout.preferredWidth: 200
-                                Layout.preferredHeight: 36 // Altura corregida
+                                Layout.preferredHeight: 36
                                 model: backend.availableEngines
                                 currentIndex: backend.availableEngines.indexOf(backend.currentEngine)
                                 onActivated: backend.currentEngine = currentText
@@ -61,23 +62,36 @@ Item {
                                     color: "#cdd6f4"
                                     verticalAlignment: Text.AlignVCenter
                                 }
-                                background: Rectangle {
-                                    color: "#1e1e2e"
-                                    border.color: "#45475a"
-                                    radius: 4
-                                }
+                                background: Rectangle { color: "#1e1e2e"; border.color: "#45475a"; radius: 4 }
                             }
                         }
 
+                        // 2. Configuración de Contexto (Tokens)
+                        RowLayout {
+                            Layout.fillWidth: true
+                            Text { text: "Contexto (Tokens):"; color: "#a6adc8"; font.pixelSize: 14; Layout.preferredWidth: 150 }
+                            TextField {
+                                Layout.preferredWidth: 200
+                                Layout.preferredHeight: 36
+                                text: backend.maxContext
+                                color: "#cdd6f4"
+                                verticalAlignment: TextInput.AlignVCenter
+                                background: Rectangle { color: "#1e1e2e"; border.color: "#45475a"; radius: 4 }
+                                validator: IntValidator { bottom: 512; top: 131072 }
+                                onEditingFinished: backend.maxContext = parseInt(text)
+                            }
+                        }
+
+                        // 3. Ruta del binario
                         RowLayout {
                             Layout.fillWidth: true
                             Text { text: "Ruta del binario / API:"; color: "#a6adc8"; font.pixelSize: 14; Layout.preferredWidth: 150 }
                             TextField {
                                 Layout.fillWidth: true
-                                Layout.preferredHeight: 36 // Altura corregida
+                                Layout.preferredHeight: 36
                                 text: backend.enginePath
                                 color: "#cdd6f4"
-                                verticalAlignment: TextInput.AlignVCenter // Centrar texto
+                                verticalAlignment: TextInput.AlignVCenter
                                 background: Rectangle { color: "#1e1e2e"; border.color: "#45475a"; radius: 4 }
                                 onEditingFinished: backend.enginePath = text
                                 placeholderText: "Ej. /usr/bin/llama-server o http://localhost:8080"
@@ -183,7 +197,6 @@ Item {
                                 border.width: 1
                             }
 
-                            // Contenido centrado usando anchors
                             contentItem: Item {
                                 Row {
                                     anchors.centerIn: parent
@@ -203,7 +216,8 @@ Item {
                                     var currentAlias = backend.currentModel.split(" (")[0];
                                     for (var i = 0; i < backend.localModels.length; i++) {
                                         if (backend.localModels[i].alias === currentAlias) {
-                                            backend.engineManager.startServer(backend.enginePath, backend.localModels[i].path, 99);
+                                            // ¡Aquí pasamos el maxContext al 4to parámetro!
+                                            backend.engineManager.startServer(backend.enginePath, backend.localModels[i].path, 99, backend.maxContext);
                                             break;
                                         }
                                     }
@@ -322,7 +336,7 @@ Item {
                 Layout.topMargin: 20
                 spacing: 10
 
-                Item { Layout.fillWidth: true } // Espaciador
+                Item { Layout.fillWidth: true }
 
                 Button {
                     text: "Cancelar"
