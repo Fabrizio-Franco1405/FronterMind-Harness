@@ -1,0 +1,5 @@
+# Directorio de compilacion (artefactos generados por CMake/Ninja)
+build/
+
+# Cache del LSP (clangd)
+.cache/

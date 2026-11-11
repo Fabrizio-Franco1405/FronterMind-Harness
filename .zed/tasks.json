@@ -1,0 +1,29 @@
+[
+  {
+    "label": "Configurar CMake",
+    "command": "cmake",
+    "args": [
+      "-B",
+      "build",
+      "-G",
+      "Ninja",
+      "-DCMAKE_BUILD_TYPE=Debug"
+    ]
+  },
+  {
+    "label": "Compilar",
+    "command": "cmake",
+    "args": [
+      "--build",
+      "build"
+    ]
+  },
+  {
+    "label": "Ejecutar",
+    "command": "./build/FronterMind-Harness"
+  },
+  {
+    "label": "Compilar y Ejecutar",
+    "command": "cmake --build build && ./build/src/app/FronterMind"
+  }
+]

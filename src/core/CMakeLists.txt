@@ -1,0 +1,3 @@
+add_library(FrontCore INTERFACE)
+target_include_directories(FrontCore INTERFACE include)
+target_link_libraries(FrontCore INTERFACE FrontPlatform)
