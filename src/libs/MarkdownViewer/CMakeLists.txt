@@ -4,14 +4,16 @@ qt_add_qml_module(FrontMarkdownViewer
     URI FronterMind.Components.MarkdownViewer
     VERSION 1.0
     SOURCES
-        include/MarkdownViewer.h
-        src/MarkdownViewer.cpp
+        MarkdownViewer.h
+        MarkdownViewer.cpp
     QML_FILES
         MarkdownView.qml
     OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/FronterMind/Components/MarkdownViewer"
 )
 
-target_include_directories(FrontMarkdownViewer PUBLIC include)
+target_include_directories(FrontMarkdownViewer PUBLIC
+    ${CMAKE_CURRENT_SOURCE_DIR}
+)
 
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(CMARK_GFM REQUIRED IMPORTED_TARGET libcmark-gfm)
