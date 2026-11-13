@@ -10,6 +10,7 @@
         "widgets"
       ]
     },
-    "qtdeclarative"
+    "qtdeclarative",
+    "cmark-gfm"
   ]
 }

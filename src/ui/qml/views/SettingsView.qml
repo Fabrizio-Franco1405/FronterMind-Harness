@@ -33,7 +33,7 @@ Item {
                 // --- SECCIÓN 1: MOTOR, CONTEXTO Y RUTA ---
                 Rectangle {
                     Layout.fillWidth: true
-                    Layout.preferredHeight: 230 // Más alto para que quepan los 3 campos
+                    Layout.preferredHeight: 230
                     color: "#181825"
                     radius: 8
                     border.color: "#313244"
@@ -201,7 +201,7 @@ Item {
                                 Row {
                                     anchors.centerIn: parent
                                     spacing: 8
-                                    Icon { iconCode: "\uf04b"; iconColor: "#1e1e2e"; font.pixelSize: 14 }
+                                    Icon { iconName: "play-16"; iconColor: "#1e1e2e"; iconSize: 14 }
                                     Text {
                                         text: backend.engineManager.isRunning ? "Motor en Ejecución" : "Iniciar Motor"
                                         color: "#1e1e2e"
@@ -216,7 +216,6 @@ Item {
                                     var currentAlias = backend.currentModel.split(" (")[0];
                                     for (var i = 0; i < backend.localModels.length; i++) {
                                         if (backend.localModels[i].alias === currentAlias) {
-                                            // ¡Aquí pasamos el maxContext al 4to parámetro!
                                             backend.engineManager.startServer(backend.enginePath, backend.localModels[i].path, 99, backend.maxContext);
                                             break;
                                         }
@@ -243,7 +242,7 @@ Item {
                                 Row {
                                     anchors.centerIn: parent
                                     spacing: 8
-                                    Icon { iconCode: "\uf04d"; iconColor: "#1e1e2e"; font.pixelSize: 14 }
+                                    Icon { iconName: "stop-16"; iconColor: "#1e1e2e"; iconSize: 14 }
                                     Text {
                                         text: "Detener Motor"
                                         color: "#1e1e2e"
@@ -330,7 +329,6 @@ Item {
                 background: Rectangle { color: "#181825"; border.color: "#45475a"; radius: 4 }
             }
 
-            // Botones del Modal centrados
             RowLayout {
                 Layout.fillWidth: true
                 Layout.topMargin: 20

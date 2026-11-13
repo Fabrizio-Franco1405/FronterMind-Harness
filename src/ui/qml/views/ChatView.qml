@@ -1,7 +1,9 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import QtQuick.Dialogs
 import "../components"
+import FronterMind.Components.MarkdownViewer
 
 Item {
     id: root
@@ -28,7 +30,7 @@ Item {
                     Text { text: "Agente Asistente"; color: "#cdd6f4"; font.pixelSize: 18; font.bold: true }
                     Row {
                         spacing: 5
-                        Icon { iconCode: "\uf1c0"; iconColor: "#6c7086"; font.pixelSize: 10; anchors.verticalCenter: parent.verticalCenter }
+                        Icon { iconName: "database"; iconColor: "#6c7086"; iconSize: 10; anchors.verticalCenter: parent.verticalCenter }
                         Text {
                             text: backend.usedTokens + " / " + backend.maxContext + " tokens";
                             color: "#6c7086"
@@ -59,6 +61,27 @@ Item {
                     }
                     background: Rectangle { color: "#181825"; border.color: "#45475a"; radius: 8 }
                 }
+                // BOTÓN PARA LIMPIAR EL CHAT
+                Item {
+                    Layout.preferredWidth: 36
+                    Layout.preferredHeight: 36
+                    Rectangle {
+                        anchors.fill: parent
+                        radius: 6
+                        color: "transparent"
+                        MouseArea {
+                            anchors.fill: parent
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: backend.clearChat()
+                        }
+                        Icon {
+                            anchors.centerIn: parent;
+                            iconName: "trash"; // Si "trash" no existe, prueba con "delete" o "broom"
+                            iconColor: "#f38ba8";
+                            iconSize: 16
+                        }
+                    }
+                }
             }
         }
 
@@ -73,9 +96,9 @@ Item {
                 visible: backend.chatMessages.length === 0
 
                 Icon {
-                    iconCode: "\uf544" // Robot
+                    iconName: "stars" // Icono de chat/robot
                     iconColor: "#cba6f7"
-                    font.pixelSize: 64
+                    iconSize: 64
                     anchors.horizontalCenter: parent.horizontalCenter
                 }
                 Text {
@@ -121,9 +144,9 @@ Item {
 
                         Icon {
                             anchors.centerIn: parent
-                            iconCode: isUser ? "\uf007" : "\uf544"
+                            iconName: isUser ? "user" : "tape"
                             iconColor: "#1e1e2e"
-                            font.pixelSize: 16
+                            iconSize: 16
                         }
                     }
 
@@ -143,24 +166,23 @@ Item {
                         border.color: isSystem ? "transparent" : (isUser ? "#89b4fa" : "#45475a")
                         border.width: isSystem ? 0 : 1
 
-                        Text {
+                        MarkdownView {
                             id: messageText
                             anchors.centerIn: parent
-                            width: parent.width - 24
-                            text: modelData.replace("Tú: ", "").replace("Agente: ", "").replace("Sistema: ", "")
-                            color: isSystem ? "#f38ba8" : (isUser ? "#1e1e2e" : "#cdd6f4")
-                            font.pixelSize: 14; wrapMode: Text.Wrap; lineHeight: 1.2
+                            width: Math.min(bubble.parent.width * 0.8, messageText.implicitWidth + 10)
+                            markdownText: modelData.replace("Tú: ", "").replace("Agente: ", "").replace("Sistema: ", "")
                         }
                     }
                 }
             }
         }
 
-        // --- ÁREA DE INPUT (Simplificada y a prueba de errores) ---
+        // --- ÁREA DE INPUT (Con soporte para archivos) ---
         Rectangle {
             Layout.fillWidth: true
-            Layout.preferredHeight: 90
+            Layout.preferredHeight: backend.attachedFileName !== "" ? 130 : 90
             color: "#1e1e2e"
+            Behavior on Layout.preferredHeight { NumberAnimation { duration: 150 } }
 
             Rectangle {
                 anchors.fill: parent; anchors.margins: 20
@@ -169,68 +191,129 @@ Item {
                 border.width: 1
                 Behavior on border.color { ColorAnimation { duration: 150 } }
 
-                RowLayout {
+                ColumnLayout {
                     anchors.fill: parent
                     anchors.margins: 10
-                    spacing: 10
+                    spacing: 5
 
-                    // Clip
-                    Item {
-                        Layout.preferredWidth: 36
-                        Layout.fillHeight: true
-                        Icon { anchors.centerIn: parent; iconCode: "\uf0c6"; iconColor: "#6c7086"; font.pixelSize: 18 }
-                    }
-
-                    // Input
-                    ScrollView {
+                    // CHIP DEL ARCHIVO ADJUNTO
+                    Rectangle {
+                        visible: backend.attachedFileName !== ""
                         Layout.fillWidth: true
-                        Layout.fillHeight: true
-                        clip: true
+                        Layout.preferredHeight: 30
+                        color: "#313244"
+                        radius: 6
 
-                        TextArea {
-                            id: chatInput
-                            placeholderText: backend.isGenerating ? "El agente está escribiendo..." : "Escribe un mensaje a FronterMind..."
-                            color: "#cdd6f4"; font.pixelSize: 14; wrapMode: TextArea.Wrap; background: null
-                            enabled: !backend.isGenerating
-                            Keys.onPressed: function(event) {
-                                if ((event.key === Qt.Key_Return || event.key === Qt.Key_Enter) && !(event.modifiers & Qt.ShiftModifier)) {
-                                    event.accepted = true; sendBtn.clicked();
+                        RowLayout {
+                            anchors.fill: parent
+                            anchors.leftMargin: 10
+                            anchors.rightMargin: 10
+
+                            Text {
+                                text: "📎 " + backend.attachedFileName;
+                                color: "#cdd6f4";
+                                font.pixelSize: 12;
+                                Layout.fillWidth: true
+                            }
+
+                            Text {
+                                text: "✕";
+                                color: "#f38ba8";
+                                font.pixelSize: 14;
+                                font.bold: true
+                                MouseArea {
+                                    anchors.fill: parent
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: backend.clearAttachment()
                                 }
                             }
                         }
                     }
 
-                    // Botón Enviar
-                    Item {
-                        Layout.preferredWidth: 40
+                    // FILA DE INPUT
+                    RowLayout {
+                        Layout.fillWidth: true
                         Layout.fillHeight: true
-                        Rectangle {
-                            anchors.centerIn: parent
-                            width: 40; height: 40; radius: 8
-                            color: (chatInput.text.trim() !== "" && !backend.isGenerating) ? "#cba6f7" : "#313244"
+                        spacing: 10
 
-                            MouseArea {
-                                anchors.fill: parent
-                                cursorShape: Qt.PointingHandCursor
-                                onClicked: {
-                                    if (chatInput.text.trim() !== "" && !backend.isGenerating) {
-                                        backend.sendMessage(chatInput.text);
-                                        chatInput.text = "";
+                        // Botón Clip (Abre el FileDialog)
+                        Item {
+                            Layout.preferredWidth: 36
+                            Layout.fillHeight: true
+                            Rectangle {
+                                anchors.centerIn: parent
+                                width: 36; height: 36; radius: 6
+                                color: "transparent"
+                                MouseArea {
+                                    anchors.fill: parent
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: fileDialog.open()
+                                }
+                                Icon { anchors.centerIn: parent; iconName: "attachement"; iconColor: "#6c7086"; iconSize: 18 }
+                            }
+                        }
+
+                        // Input de Texto
+                        ScrollView {
+                            Layout.fillWidth: true
+                            Layout.fillHeight: true
+                            clip: true
+
+                            TextArea {
+                                id: chatInput
+                                placeholderText: backend.isGenerating ? "El agente está escribiendo..." : "Escribe un mensaje a FronterMind..."
+                                color: "#cdd6f4"; font.pixelSize: 14; wrapMode: TextArea.Wrap; background: null
+                                enabled: !backend.isGenerating
+                                Keys.onPressed: function(event) {
+                                    if ((event.key === Qt.Key_Return || event.key === Qt.Key_Enter) && !(event.modifiers & Qt.ShiftModifier)) {
+                                        event.accepted = true; sendBtn.clicked();
                                     }
                                 }
                             }
+                        }
 
-                            Icon {
+                        // Botón Enviar (Habilitado si hay texto O un archivo)
+                        Item {
+                            Layout.preferredWidth: 40
+                            Layout.fillHeight: true
+                            Rectangle {
                                 anchors.centerIn: parent
-                                anchors.horizontalCenterOffset: 1 // Corrección óptica
-                                iconCode: "\uf1d8"
-                                iconColor: (chatInput.text.trim() !== "" && !backend.isGenerating) ? "#1e1e2e" : "#6c7086"
-                                font.pixelSize: 18
+                                width: 40; height: 40; radius: 8
+                                color: ((chatInput.text.trim() !== "" || backend.attachedFileName !== "") && !backend.isGenerating) ? "#cba6f7" : "#313244"
+
+                                MouseArea {
+                                    anchors.fill: parent
+                                    cursorShape: Qt.PointingHandCursor
+                                    onClicked: {
+                                        if ((chatInput.text.trim() !== "" || backend.attachedFileName !== "") && !backend.isGenerating) {
+                                            backend.sendMessage(chatInput.text);
+                                            chatInput.text = "";
+                                        }
+                                    }
+                                }
+
+                                Icon {
+                                    anchors.centerIn: parent
+                                    anchors.horizontalCenterOffset: 1
+                                    iconName: "send"
+                                    iconColor: ((chatInput.text.trim() !== "" || backend.attachedFileName !== "") && !backend.isGenerating) ? "#1e1e2e" : "#6c7086"
+                                    iconSize: 18
+                                }
                             }
                         }
                     }
                 }
             }
+        }
+    }
+
+    // --- DIÁLOGO DE ARCHIVOS ---
+    FileDialog {
+        id: fileDialog
+        title: "Adjuntar archivo al chat"
+        nameFilters: ["Archivos de texto (*.txt *.md *.json *.py *.cpp *.h *.qml)", "Todos los archivos (*)"]
+        onAccepted: {
+            backend.attachFile(selectedFile.toString().replace("file://", ""))
         }
     }
 }

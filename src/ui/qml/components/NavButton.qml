@@ -25,9 +25,9 @@ Button {
         spacing: 12
 
         Icon {
-            iconCode: root.iconCode
+            iconName: root.iconCode
             iconColor: root.isActive ? "#cba6f7" : "#cdd6f4"
-            font.pixelSize: 16
+            iconSize: 16
         }
 
         Text {

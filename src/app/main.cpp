@@ -1,17 +1,18 @@
 #include <QGuiApplication>
 #include <QQmlApplicationEngine>
-#include <QQmlContext> // <-- Nuevo include
-#include "AppController.h" // <-- Nuevo include
+#include <QQmlContext>
+#include "AppController.h"
+#include "IconImageProvider.h"
+#include <oclero/qlementine/icons/QlementineIcons.hpp>
 
 int main(int argc, char *argv[])
 {
+    oclero::qlementine::icons::initializeIconTheme();
     QGuiApplication app(argc, argv);
     QQmlApplicationEngine engine;
+    engine.addImageProvider("icon", new IconImageProvider());
 
-    // 1. Creamos el controlador
     AppController appController;
-
-    // 2. Lo exponemos a QML como "backend"
     engine.rootContext()->setContextProperty("backend", &appController);
 
     engine.addImportPath(":/qt/qml/");

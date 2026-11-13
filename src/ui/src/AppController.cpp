@@ -4,6 +4,8 @@
 #include <QJsonDocument>
 #include <QJsonArray>
 #include <QJsonObject>
+#include <QFile>
+#include <QFileInfo>
 
 AppController::AppController(QObject *parent) : QObject(parent) {
     m_agentEngine = new AgentEngine(this);
@@ -50,7 +52,7 @@ AppController::AppController(QObject *parent) : QObject(parent) {
         }
     });
 
-    // NUEVO: Conectar señal de tokens del Core
+    // Conectar señal de tokens del Core
     connect(m_agentEngine, &AgentEngine::tokensUpdated, this, [this](int prompt, int completion, int total) {
         m_usedTokens = total;
         emit tokensChanged();
@@ -80,10 +82,41 @@ void AppController::setMaxContext(int context) {
     saveSettings();
 }
 
-void AppController::sendMessage(const QString &text) {
-    if (text.trimmed().isEmpty() || m_isGenerating) return;
+// --- NUEVOS MÉTODOS DE ARCHIVO ---
+void AppController::attachFile(const QString &path) {
+    QFile file(path);
+    if (file.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        m_attachedFileName = QFileInfo(path).fileName();
+        m_attachedFileContent = QString::fromUtf8(file.readAll());
+        emit attachmentChanged();
+    } else {
+        m_chatMessages.append("Sistema: No se pudo leer el archivo.");
+        emit chatMessagesChanged();
+    }
+}
 
-    m_chatMessages.append("Tú: " + text);
+void AppController::clearAttachment() {
+    m_attachedFileName = "";
+    m_attachedFileContent = "";
+    emit attachmentChanged();
+}
+
+// --- ACTUALIZA sendMessage ---
+void AppController::sendMessage(const QString &text) {
+    // Permitir enviar si hay texto O si hay un archivo adjunto
+    if ((text.trimmed().isEmpty() && m_attachedFileName.isEmpty()) || m_isGenerating) return;
+
+    QString finalMessage = text;
+
+    // Si hay un archivo adjunto, lo inyectamos en el prompt
+    if (!m_attachedFileContent.isEmpty()) {
+        finalMessage = "Aquí tienes el contenido del archivo '" + m_attachedFileName + "':\n\n```\n" + m_attachedFileContent + "\n```\n\n" + text;
+        m_chatMessages.append("Tú: [Adjunto: " + m_attachedFileName + "] " + text);
+        clearAttachment(); // Limpiamos el adjunto después de enviarlo
+    } else {
+        m_chatMessages.append("Tú: " + text);
+    }
+
     emit chatMessagesChanged();
 
     if (m_currentModel == "Ninguno") {
@@ -92,7 +125,7 @@ void AppController::sendMessage(const QString &text) {
         return;
     }
 
-    m_agentEngine->sendMessage(m_currentModel, text);
+    m_agentEngine->sendMessage(m_currentModel, finalMessage);
 }
 
 void AppController::loadModel(const QString &alias, const QString &path) {
@@ -131,7 +164,7 @@ void AppController::saveSettings() {
     settings.setValue("engine", m_currentEngine);
     settings.setValue("enginePath", m_enginePath);
     settings.setValue("currentModel", m_currentModel);
-    settings.setValue("maxContext", m_maxContext); // Guardar contexto
+    settings.setValue("maxContext", m_maxContext);
 
     QJsonArray modelsArray;
     for (const QVariant &item : m_localModels) {
@@ -150,7 +183,7 @@ void AppController::loadSettings() {
     m_currentEngine = settings.value("engine", "llama.cpp").toString();
     m_enginePath = settings.value("enginePath", "/usr/bin/llama-server").toString();
     m_currentModel = settings.value("currentModel", "Ninguno").toString();
-    m_maxContext = settings.value("maxContext", 4096).toInt(); // Cargar contexto
+    m_maxContext = settings.value("maxContext", 4096).toInt();
 
     QString modelsJson = settings.value("models", "").toString();
     if (!modelsJson.isEmpty()) {
@@ -173,4 +206,11 @@ void AppController::loadSettings() {
     emit currentModelChanged();
     emit localModelsChanged();
     emit maxContextChanged();
+}
+
+void AppController::clearChat() {
+    m_chatMessages.clear();
+    m_usedTokens = 0;
+    emit chatMessagesChanged();
+    emit tokensChanged();
 }

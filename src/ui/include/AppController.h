@@ -25,6 +25,7 @@ class AppController : public QObject {
     // Chat
     Q_PROPERTY(QStringList chatMessages READ chatMessages NOTIFY chatMessagesChanged)
     Q_PROPERTY(bool isGenerating READ isGenerating NOTIFY isGeneratingChanged)
+    Q_PROPERTY(QString attachedFileName READ attachedFileName NOTIFY attachmentChanged)
 
     // Tokens y Contexto
     Q_PROPERTY(int usedTokens READ usedTokens NOTIFY tokensChanged)
@@ -58,6 +59,11 @@ public:
     Q_INVOKABLE void addModel(const QString &path, const QString &alias);
     Q_INVOKABLE void loadModel(const QString &alias, const QString &path);
 
+    QString attachedFileName() const { return m_attachedFileName; }
+    Q_INVOKABLE void attachFile(const QString &path);
+    Q_INVOKABLE void clearAttachment();
+    Q_INVOKABLE void clearChat();
+
 signals:
     void telemetryChanged();
     void currentEngineChanged();
@@ -68,6 +74,7 @@ signals:
     void isGeneratingChanged();
     void tokensChanged();
     void maxContextChanged();
+    void attachmentChanged();
 
 private:
     void startTelemetry();
@@ -94,4 +101,7 @@ private:
 
     int m_usedTokens = 0;
     int m_maxContext = 4096;
+
+    QString m_attachedFileName;
+    QString m_attachedFileContent;
 };

@@ -8,7 +8,7 @@ Rectangle {
     color: "#181825"
 
     signal viewRequested(string viewName)
-    property int currentIndex: 0 // <-- AÑADE ESTO
+    property int currentIndex: 0
 
     ColumnLayout {
         anchors.fill: parent
@@ -25,15 +25,15 @@ Rectangle {
 
         NavButton {
             text: "Chat"
-            iconCode: "\uf075"
-            isActive: sidebar.currentIndex === 0 // <-- CAMBIA ESTO
+            iconCode: "comment" // <-- Sin el -16
+            isActive: sidebar.currentIndex === 0
             onClicked: sidebar.viewRequested("chat")
         }
 
         NavButton {
             text: "Ajustes"
-            iconCode: "\uf013"
-            isActive: sidebar.currentIndex === 1 // <-- CAMBIA ESTO
+            iconCode: "settings" // <-- Sin el -16
+            isActive: sidebar.currentIndex === 1
             onClicked: sidebar.viewRequested("settings")
         }
 
