@@ -5,6 +5,8 @@ target_sources(FrontUI PRIVATE
     controllers/AppController.h
     controllers/IconImageProvider.cpp
     controllers/IconImageProvider.h
+    controllers/ThemeManager.cpp
+    controllers/ThemeManager.h
 )
 
 qt_add_qml_module(FrontUI
@@ -19,12 +21,13 @@ qt_add_qml_module(FrontUI
         qml/components/Icon.qml
         qml/views/ChatView.qml
         qml/views/SettingsView.qml
+        qml/views/AppearanceView.qml
     OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/FronterMind/UI"
 )
 
 target_include_directories(FrontUI PUBLIC
-    ${CMAKE_CURRENT_SOURCE_DIR}
-    ${CMAKE_CURRENT_SOURCE_DIR}/controllers
+    "${CMAKE_CURRENT_SOURCE_DIR}"
+    "${CMAKE_CURRENT_SOURCE_DIR}/controllers"
 )
 
 target_link_libraries(FrontUI

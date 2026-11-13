@@ -31,7 +31,6 @@ Item {
                 readonly property var blockData: modelData
                 readonly property bool isCode: blockData.type === "code"
 
-                // --- BLOQUE DE TEXTO (MARKDOWN ESTILIZADO) ---
                 TextEdit {
                     id: richTextItem
                     visible: !delegateRoot.isCode
@@ -48,13 +47,12 @@ Item {
                     onLinkActivated: (link) => Qt.openUrlExternally(link)
                 }
 
-                // --- TARJETA DE CÓDIGO (ESTILO CATPPUCCIN MOCHA) ---
                 Rectangle {
                     id: codeContainer
                     visible: delegateRoot.isCode
                     width: parent.width
                     implicitHeight: codeColumn.implicitHeight
-                    color: "#181825" // Mismo tono oscuro elegante que tu barra de input
+                    color: "#181825"
                     radius: 10
                     border.color: "#45475a"
                     border.width: 1
@@ -72,14 +70,12 @@ Item {
                         width: parent.width
                         spacing: 0
 
-                        // Cabecera superior de la tarjeta de código
                         Rectangle {
                             Layout.fillWidth: true
                             Layout.preferredHeight: 36
                             color: "#11111b"
                             radius: 10
 
-                            // Parche inferior para que solo las esquinas de arriba sean redondeadas
                             Rectangle {
                                 width: parent.width
                                 height: 10
@@ -87,7 +83,6 @@ Item {
                                 anchors.bottom: parent.bottom
                             }
 
-                            // Línea divisoria sutil
                             Rectangle {
                                 width: parent.width
                                 height: 1
@@ -101,7 +96,6 @@ Item {
                                 anchors.rightMargin: 12
                                 spacing: 8
 
-                                // Puntito decorativo con el acento lavanda de FronterMind
                                 Rectangle {
                                     width: 8
                                     height: 8
@@ -109,11 +103,10 @@ Item {
                                     color: "#cba6f7"
                                 }
 
-                                // Etiqueta del lenguaje
                                 Text {
                                     text: (delegateRoot.blockData.language && delegateRoot.blockData.language !== "")
                                           ? delegateRoot.blockData.language.toUpperCase()
-                                          : "CÓDIGO"
+                                          : "CODE"
                                     color: "#a6adc8"
                                     font.pixelSize: 11
                                     font.bold: true
@@ -122,9 +115,9 @@ Item {
                                     Layout.fillWidth: true
                                 }
 
-                                // Botón Copiar tipo píldora
+                                // Botón Copiar con icono SVG Qlementine (0 emojis)
                                 Rectangle {
-                                    Layout.preferredWidth: copyLabel.implicitWidth + 20
+                                    Layout.preferredWidth: copyBtnRow.implicitWidth + 18
                                     Layout.preferredHeight: 24
                                     radius: 6
                                     color: codeContainer.copied
@@ -132,15 +125,34 @@ Item {
                                            : (copyMouse.containsMouse ? "#313244" : "#1e1e2e")
                                     border.color: codeContainer.copied ? "#a6e3a1" : "#45475a"
                                     border.width: 1
-                                    Behavior on color { ColorAnimation { duration: 120 } }
+                                    Behavior on color { ColorAnimation { duration: 100 } }
 
-                                    Text {
-                                        id: copyLabel
+                                    Row {
+                                        id: copyBtnRow
                                         anchors.centerIn: parent
-                                        text: codeContainer.copied ? "✓ Copiado" : "Copiar código"
-                                        color: codeContainer.copied ? "#a6e3a1" : "#cdd6f4"
-                                        font.pixelSize: 11
-                                        font.bold: codeContainer.copied
+                                        spacing: 6
+
+                                        Image {
+                                            property string currentIcon: codeContainer.copied ? "check-tick" : "copy"
+                                            property color currentColor: codeContainer.copied ? "#a6e3a1" : "#cdd6f4"
+
+                                            width: 13
+                                            height: 13
+                                            sourceSize: Qt.size(13, 13)
+                                            source: "image://icon/" + currentIcon + "?" + currentColor
+                                            fillMode: Image.PreserveAspectFit
+                                            smooth: true
+                                            cache: false
+                                            anchors.verticalCenter: parent.verticalCenter
+                                        }
+
+                                        Text {
+                                            text: codeContainer.copied ? "Copiado" : "Copiar código"
+                                            color: codeContainer.copied ? "#a6e3a1" : "#cdd6f4"
+                                            font.pixelSize: 11
+                                            font.bold: codeContainer.copied
+                                            anchors.verticalCenter: parent.verticalCenter
+                                        }
                                     }
 
                                     MouseArea {
@@ -158,7 +170,6 @@ Item {
                             }
                         }
 
-                        // Área del código con padding holgado
                         Item {
                             Layout.fillWidth: true
                             Layout.preferredHeight: codeTextEdit.implicitHeight + 28

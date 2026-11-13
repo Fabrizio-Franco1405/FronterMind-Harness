@@ -1,7 +1,6 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
-import QtQuick.Dialogs
 import "../components"
 import FronterMind.Components.MarkdownViewer
 
@@ -12,10 +11,10 @@ Item {
         anchors.fill: parent
         spacing: 0
 
-        // --- HEADER ---
+        // --- HEADER SUPERIOR ---
         Rectangle {
             Layout.fillWidth: true
-            Layout.preferredHeight: 70
+            Layout.preferredHeight: 72
             color: "#1e1e2e"
 
             Rectangle { width: parent.width; height: 1; color: "#313244"; anchors.bottom: parent.bottom }
@@ -24,62 +23,94 @@ Item {
                 anchors.fill: parent
                 anchors.leftMargin: 30
                 anchors.rightMargin: 30
-                spacing: 20
+                spacing: 18
 
-                Column {
-                    Text { text: "Agente Asistente"; color: "#cdd6f4"; font.pixelSize: 18; font.bold: true }
-                    Row {
-                        spacing: 5
-                        Icon { iconName: "database"; iconColor: "#6c7086"; iconSize: 10; anchors.verticalCenter: parent.verticalCenter }
+                ColumnLayout {
+                    spacing: 4
+                    Text {
+                        text: "Agente Asistente"
+                        color: "#cdd6f4"
+                        font.pixelSize: 18
+                        font.bold: true
+                    }
+
+                    RowLayout {
+                        spacing: 8
+                        Icon { iconName: "database"; iconColor: "#cba6f7"; iconSize: 11 }
                         Text {
-                            text: backend.usedTokens + " / " + backend.maxContext + " tokens";
-                            color: "#6c7086"
+                            text: backend.usedTokens + " / " + backend.maxContext + " tokens"
+                            color: "#a6adc8"
                             font.pixelSize: 11
-                            anchors.verticalCenter: parent.verticalCenter
+                            font.family: "monospace"
+                        }
+                        Rectangle {
+                            width: 70; height: 5; radius: 3
+                            color: "#313244"
+                            Rectangle {
+                                width: Math.min(parent.width, (backend.usedTokens / Math.max(1, backend.maxContext)) * parent.width)
+                                height: parent.height
+                                radius: 3
+                                color: (backend.usedTokens / Math.max(1, backend.maxContext)) > 0.85 ? "#f38ba8" : "#cba6f7"
+                                Behavior on width { NumberAnimation { duration: 180 } }
+                            }
                         }
                     }
                 }
 
                 Item { Layout.fillWidth: true }
 
-                Text { text: "Modelo:"; color: "#a6adc8"; font.pixelSize: 13; verticalAlignment: Text.AlignVCenter }
+                Text { text: "Modelo:"; color: "#a6adc8"; font.pixelSize: 13 }
+
                 ComboBox {
-                    Layout.preferredWidth: 260
+                    id: modelSelector
+                    Layout.preferredWidth: 250
                     Layout.preferredHeight: 36
                     model: backend.localModels
                     textRole: "alias"
                     onActivated: {
-                        var model = backend.localModels[currentIndex];
-                        backend.loadModel(model.alias, model.path);
+                        var m = backend.localModels[currentIndex]
+                        backend.loadModel(m.alias, m.path)
                     }
                     contentItem: Text {
                         leftPadding: 12
-                        text: parent.currentIndex >= 0 ? parent.textAt(parent.currentIndex) : "Seleccionar modelo"
+                        rightPadding: 24
+                        text: modelSelector.currentIndex >= 0 ? modelSelector.textAt(modelSelector.currentIndex) : "Seleccionar modelo"
                         color: "#cdd6f4"
                         font.pixelSize: 13
+                        elide: Text.ElideRight
                         verticalAlignment: Text.AlignVCenter
                     }
-                    background: Rectangle { color: "#181825"; border.color: "#45475a"; radius: 8 }
+                    background: Rectangle {
+                        color: "#181825"
+                        border.color: modelSelector.hovered ? "#cba6f7" : "#45475a"
+                        radius: 8
+                        Behavior on border.color { ColorAnimation { duration: 100 } }
+                    }
                 }
-                // BOTÓN PARA LIMPIAR EL CHAT
-                Item {
+
+                // Botón Limpiar Sesión
+                Rectangle {
                     Layout.preferredWidth: 36
                     Layout.preferredHeight: 36
-                    Rectangle {
+                    radius: 8
+                    color: clearMouse.containsMouse ? "#313244" : "#181825"
+                    border.color: clearMouse.containsMouse ? "#f38ba8" : "#45475a"
+                    border.width: 1
+                    Behavior on color { ColorAnimation { duration: 100 } }
+
+                    Icon {
+                        anchors.centerIn: parent
+                        iconName: "trash"
+                        iconColor: "#f38ba8"
+                        iconSize: 15
+                    }
+
+                    MouseArea {
+                        id: clearMouse
                         anchors.fill: parent
-                        radius: 6
-                        color: "transparent"
-                        MouseArea {
-                            anchors.fill: parent
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: backend.clearChat()
-                        }
-                        Icon {
-                            anchors.centerIn: parent;
-                            iconName: "trash";
-                            iconColor: "#f38ba8";
-                            iconSize: 16
-                        }
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: backend.clearChat()
                     }
                 }
             }
@@ -90,29 +121,39 @@ Item {
             Layout.fillWidth: true
             Layout.fillHeight: true
 
-            Column {
+            ColumnLayout {
                 anchors.centerIn: parent
-                spacing: 20
+                spacing: 14
                 visible: backend.chatMessages.length === 0
 
-                Icon {
-                    iconName: "stars"
-                    iconColor: "#cba6f7"
-                    iconSize: 64
-                    anchors.horizontalCenter: parent.horizontalCenter
+                Rectangle {
+                    Layout.alignment: Qt.AlignHCenter
+                    width: 72; height: 72; radius: 20
+                    color: "#181825"
+                    border.color: "#45475a"
+                    border.width: 1
+
+                    Icon {
+                        anchors.centerIn: parent
+                        iconName: "stars"
+                        iconColor: "#cba6f7"
+                        iconSize: 36
+                    }
                 }
+
                 Text {
-                    text: "¿En qué estás trabajando hoy?"
+                    text: "¿En qué estamos trabajando hoy?"
                     color: "#cdd6f4"
                     font.pixelSize: 24
                     font.bold: true
-                    anchors.horizontalCenter: parent.horizontalCenter
+                    Layout.alignment: Qt.AlignHCenter
                 }
+
                 Text {
-                    text: "Selecciona un modelo y empieza a chatear con tu IA local."
+                    text: "Tu agente local con memoria contextual está listo para analizar código, diseñar arquitectura o depurar errores."
                     color: "#6c7086"
-                    font.pixelSize: 14
-                    anchors.horizontalCenter: parent.horizontalCenter
+                    font.pixelSize: 13
+                    Layout.alignment: Qt.AlignHCenter
                 }
             }
 
@@ -120,12 +161,17 @@ Item {
                 id: messageList
                 anchors.fill: parent
                 clip: true
-                spacing: 25
+                spacing: 22
+                cacheBuffer: 2000 // Mantiene delegados en caché para scroll instantáneo
                 model: backend.chatMessages
                 visible: backend.chatMessages.length > 0
 
-                onCountChanged: positionViewAtEnd()
-                topMargin: 30; bottomMargin: 30; leftMargin: 30; rightMargin: 30
+                onCountChanged: Qt.callLater(positionViewAtEnd)
+                topMargin: 28; bottomMargin: 28; leftMargin: 30; rightMargin: 30
+
+                ScrollBar.vertical: ScrollBar {
+                    policy: ScrollBar.AsNeeded
+                }
 
                 delegate: Item {
                     width: messageList.width - 60
@@ -138,16 +184,18 @@ Item {
 
                     Rectangle {
                         id: avatar
-                        width: 32; height: 32; radius: 16
-                        color: isUser ? "#89b4fa" : "#cba6f7"
+                        width: 34; height: 34; radius: 10
+                        color: isUser ? "#89b4fa" : "#181825"
+                        border.color: isUser ? "transparent" : "#cba6f7"
+                        border.width: isUser ? 0 : 1
                         anchors.left: isUser ? undefined : parent.left
                         anchors.right: isUser ? parent.right : undefined
                         anchors.top: parent.top
 
                         Icon {
                             anchors.centerIn: parent
-                            iconName: isUser ? "user" : "tape"
-                            iconColor: "#1e1e2e"
+                            iconName: isUser ? "user" : "stars"
+                            iconColor: isUser ? "#11111b" : "#cba6f7"
                             iconSize: 16
                         }
                     }
@@ -155,53 +203,68 @@ Item {
                     Rectangle {
                         id: bubble
                         width: (isSystem || isThinking)
-                                ? systemText.implicitWidth + 28
-                                : (isUser ? Math.min(parent.width * 0.8, userText.implicitWidth + 24) : parent.width * 0.85)
+                               ? statusRow.implicitWidth + 32
+                               : (isUser ? Math.min(parent.width * 0.78, userText.implicitWidth + 28) : parent.width * 0.86)
                         height: (isSystem || isThinking)
-                                ? systemText.implicitHeight + 24
-                                : (isUser ? userText.implicitHeight + 24 : markdownView.implicitHeight + 24)
+                                ? Math.max(40, statusText.implicitHeight + 24)
+                                : (isUser ? userText.implicitHeight + 24 : markdownView.implicitHeight + 28)
                         radius: 12
 
                         anchors.top: parent.top
                         anchors.left: isUser ? undefined : avatar.right
                         anchors.right: isUser ? avatar.left : undefined
-                        anchors.leftMargin: isUser ? 0 : 15
-                        anchors.rightMargin: isUser ? 15 : 0
+                        anchors.leftMargin: isUser ? 0 : 14
+                        anchors.rightMargin: isUser ? 14 : 0
 
-                        color: isUser ? "#89b4fa" : "#313244"
-                        border.color: isUser ? "#89b4fa" : "#45475a"
+                        color: isUser ? "#89b4fa" : (isThinking ? "#181825" : "#26273a")
+                        border.color: isUser ? "#89b4fa" : (isSystem ? "#f38ba8" : "#3b3d54")
                         border.width: isUser ? 0 : 1
 
-                        Text {
-                            id: systemText
+                        // Estado de Sistema / Pensando con icono vectorial puro (0 emojis)
+                        RowLayout {
+                            id: statusRow
                             visible: isSystem || isThinking
-                            x: 14; y: 12
-                            width: parent.width - 28
-                            text: modelData.replace("Sistema: ", "").replace("Agente: ", "")
-                            // Gris suave para "Pensando...", rojo suave solo para avisos del Sistema
-                            color: isThinking ? "#a6adc8" : "#f38ba8"
-                            font.italic: isThinking
-                            font.pixelSize: 14
-                            wrapMode: Text.Wrap
+                            x: 16
+                            anchors.verticalCenter: parent.verticalCenter
+                            width: Math.min(bubble.parent.width * 0.75, statusText.implicitWidth + 26)
+                            spacing: 8
+
+                            Icon {
+                                iconName: isThinking ? "hourglass" : "warning"
+                                iconColor: isThinking ? "#cba6f7" : "#f38ba8"
+                                iconSize: 14
+                                Layout.alignment: Qt.AlignVCenter
+                            }
+
+                            Text {
+                                id: statusText
+                                Layout.fillWidth: true
+                                text: modelData.replace("Sistema: ", "").replace("Agente: ", "")
+                                color: isThinking ? "#a6adc8" : "#f38ba8"
+                                font.italic: isThinking
+                                font.pixelSize: 13
+                                wrapMode: Text.Wrap
+                            }
                         }
 
                         Text {
                             id: userText
                             visible: isUser
-                            x: 12; y: 12
-                            width: parent.width - 24
+                            x: 14; y: 12
+                            width: parent.width - 28
                             text: modelData.replace("Tú: ", "")
-                            color: "#1e1e2e"
+                            color: "#11111b"
                             font.pixelSize: 14
+                            font.weight: Font.Medium
                             wrapMode: Text.Wrap
-                            lineHeight: 1.2
+                            lineHeight: 1.25
                         }
 
                         MarkdownView {
                             id: markdownView
                             visible: isMarkdown
-                            x: 12; y: 12
-                            width: parent.width - 24
+                            x: 14; y: 14
+                            width: parent.width - 28
                             markdownText: isMarkdown ? modelData.replace("Agente: ", "") : ""
                         }
                     }
@@ -209,143 +272,8 @@ Item {
             }
         }
 
-        // --- ÁREA DE INPUT (Con soporte para archivos) ---
-        Rectangle {
+        ChatInput {
             Layout.fillWidth: true
-            Layout.preferredHeight: backend.attachedFileName !== "" ? 130 : 90
-            color: "#1e1e2e"
-            Behavior on Layout.preferredHeight { NumberAnimation { duration: 150 } }
-
-            Rectangle {
-                anchors.fill: parent; anchors.margins: 20
-                color: "#181825"; radius: 12
-                border.color: chatInput.activeFocus ? "#cba6f7" : "#313244"
-                border.width: 1
-                Behavior on border.color { ColorAnimation { duration: 150 } }
-
-                ColumnLayout {
-                    anchors.fill: parent
-                    anchors.margins: 10
-                    spacing: 5
-
-                    // CHIP DEL ARCHIVO ADJUNTO
-                    Rectangle {
-                        visible: backend.attachedFileName !== ""
-                        Layout.fillWidth: true
-                        Layout.preferredHeight: 30
-                        color: "#313244"
-                        radius: 6
-
-                        RowLayout {
-                            anchors.fill: parent
-                            anchors.leftMargin: 10
-                            anchors.rightMargin: 10
-
-                            Text {
-                                text: "📎 " + backend.attachedFileName;
-                                color: "#cdd6f4";
-                                font.pixelSize: 12;
-                                Layout.fillWidth: true
-                            }
-
-                            Text {
-                                text: "✕";
-                                color: "#f38ba8";
-                                font.pixelSize: 14;
-                                font.bold: true
-                                MouseArea {
-                                    anchors.fill: parent
-                                    cursorShape: Qt.PointingHandCursor
-                                    onClicked: backend.clearAttachment()
-                                }
-                            }
-                        }
-                    }
-
-                    // FILA DE INPUT
-                    RowLayout {
-                        Layout.fillWidth: true
-                        Layout.fillHeight: true
-                        spacing: 10
-
-                        // Botón Clip (Abre el FileDialog)
-                        Item {
-                            Layout.preferredWidth: 36
-                            Layout.fillHeight: true
-                            Rectangle {
-                                anchors.centerIn: parent
-                                width: 36; height: 36; radius: 6
-                                color: "transparent"
-                                MouseArea {
-                                    anchors.fill: parent
-                                    cursorShape: Qt.PointingHandCursor
-                                    onClicked: fileDialog.open()
-                                }
-                                Icon { anchors.centerIn: parent; iconName: "attachement"; iconColor: "#6c7086"; iconSize: 18 }
-                            }
-                        }
-
-                        // Input de Texto
-                        ScrollView {
-                            Layout.fillWidth: true
-                            Layout.fillHeight: true
-                            clip: true
-
-                            TextArea {
-                                id: chatInput
-                                placeholderText: backend.isGenerating ? "El agente está escribiendo..." : "Escribe un mensaje a FronterMind..."
-                                color: "#cdd6f4"; font.pixelSize: 14; wrapMode: TextArea.Wrap; background: null
-                                enabled: !backend.isGenerating
-                                Keys.onPressed: function(event) {
-                                    if ((event.key === Qt.Key_Return || event.key === Qt.Key_Enter) && !(event.modifiers & Qt.ShiftModifier)) {
-                                        event.accepted = true; sendBtn.clicked();
-                                    }
-                                }
-                            }
-                        }
-
-                        // Botón Enviar (Habilitado si hay texto O un archivo)
-                        Item {
-                            Layout.preferredWidth: 40
-                            Layout.fillHeight: true
-                            Rectangle {
-                                anchors.centerIn: parent
-                                width: 40; height: 40; radius: 8
-                                color: ((chatInput.text.trim() !== "" || backend.attachedFileName !== "") && !backend.isGenerating) ? "#cba6f7" : "#313244"
-
-                                MouseArea {
-                                    anchors.fill: parent
-                                    cursorShape: Qt.PointingHandCursor
-                                    onClicked: {
-                                        if ((chatInput.text.trim() !== "" || backend.attachedFileName !== "") && !backend.isGenerating) {
-                                            backend.sendMessage(chatInput.text);
-                                            chatInput.text = "";
-                                        }
-                                    }
-                                }
-
-                                Icon {
-                                    anchors.centerIn: parent
-                                    anchors.horizontalCenterOffset: 1
-                                    iconName: "send"
-                                    iconColor: ((chatInput.text.trim() !== "" || backend.attachedFileName !== "") && !backend.isGenerating) ? "#1e1e2e" : "#6c7086"
-                                    iconSize: 18
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    // --- DIÁLOGO DE ARCHIVOS ---
-    FileDialog {
-        id: fileDialog
-        title: "Adjuntar archivo al chat"
-        nameFilters: ["Archivos de texto (*.txt *.md *.json *.py *.cpp *.h *.qml)", "Todos los archivos (*)"]
-        onAccepted: {
-            backend.attachFile(selectedFile.toString().replace("file://", ""))
         }
     }
 }

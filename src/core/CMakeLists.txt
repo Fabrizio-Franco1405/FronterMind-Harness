@@ -6,6 +6,15 @@ qt_add_library(FrontCore STATIC
     context/ChatMessage.h
     context/ConversationMemory.h
     context/ConversationMemory.cpp
+    tools/ITool.h
+    tools/ToolRegistry.h
+    tools/ToolRegistry.cpp
+    tools/FileSystemTools.h
+    tools/FileSystemTools.cpp
+    tools/TerminalTool.cpp
+    tools/TerminalTool.h
+    tools/WebTools.cpp
+    tools/WebTools.h
 )
 
 target_include_directories(FrontCore PUBLIC

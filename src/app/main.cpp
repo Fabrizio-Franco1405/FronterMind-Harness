@@ -4,6 +4,7 @@
 #include "AppController.h"
 #include "IconImageProvider.h"
 #include <oclero/qlementine/icons/QlementineIcons.hpp>
+#include "ThemeManager.h"
 
 int main(int argc, char *argv[])
 {
@@ -13,7 +14,9 @@ int main(int argc, char *argv[])
     engine.addImageProvider("icon", new IconImageProvider());
 
     AppController appController;
+    ThemeManager themeManager;
     engine.rootContext()->setContextProperty("backend", &appController);
+    engine.rootContext()->setContextProperty("theme", &themeManager);
 
     engine.addImportPath(":/qt/qml/");
     engine.loadFromModule("FronterMind.UI", "Main");

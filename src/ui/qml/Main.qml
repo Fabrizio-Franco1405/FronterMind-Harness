@@ -9,7 +9,7 @@ ApplicationWindow {
     height: 750
     visible: true
     title: "FronterMind - Harness"
-    color: "#1e1e2e"
+    color: theme.bgBase
 
     ColumnLayout {
         anchors.fill: parent
@@ -23,9 +23,11 @@ ApplicationWindow {
             Sidebar {
                 id: sidebar
                 Layout.fillHeight: true
-                currentIndex: stackLayout.currentIndex // <-- AÑADE ESTO
+                currentIndex: stackLayout.currentIndex
                 onViewRequested: function(viewName) {
-                    stackLayout.currentIndex = (viewName === "chat") ? 0 : 1;
+                    if (viewName === "chat") stackLayout.currentIndex = 0;
+                    else if (viewName === "settings") stackLayout.currentIndex = 1;
+                    else if (viewName === "appearance") stackLayout.currentIndex = 2;
                 }
             }
 
@@ -37,6 +39,7 @@ ApplicationWindow {
 
                 ChatView {}
                 SettingsView {}
+                AppearanceView {}
             }
         }
 

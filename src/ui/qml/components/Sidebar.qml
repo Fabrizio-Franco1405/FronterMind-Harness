@@ -4,45 +4,153 @@ import QtQuick.Layouts
 
 Rectangle {
     id: sidebar
-    width: 220
-    color: "#181825"
+    width: 235
+    color: theme.bgSidebar
 
     signal viewRequested(string viewName)
     property int currentIndex: 0
 
+    Rectangle {
+        width: 1
+        height: parent.height
+        color: theme.borderColor
+        anchors.right: parent.right
+    }
+
     ColumnLayout {
         anchors.fill: parent
-        anchors.margins: 15
-        spacing: 10
+        anchors.margins: 16
+        spacing: 8
+
+        RowLayout {
+            Layout.fillWidth: true
+            Layout.bottomMargin: 18
+            spacing: 10
+
+            Rectangle {
+                width: 34; height: 34; radius: 8
+                color: theme.bgSurface
+                border.color: theme.accentColor
+                border.width: 1
+
+                Icon {
+                    anchors.centerIn: parent
+                    iconName: "stars"
+                    iconColor: theme.accentColor
+                    iconSize: 18
+                }
+            }
+
+            Column {
+                spacing: 1
+                Text {
+                    text: "FronterMind"
+                    color: theme.textPrimary
+                    font.family: theme.fontFamily
+                    font.pixelSize: 17
+                    font.bold: true
+                }
+                Text {
+                    text: "LOCAL AI HARNESS"
+                    color: theme.textSecondary
+                    font.family: theme.fontFamily
+                    font.pixelSize: 9
+                    font.bold: true
+                    font.letterSpacing: 1.1
+                }
+            }
+        }
 
         Text {
-            text: "FronterMind"
-            color: "#cba6f7"
-            font.pixelSize: 20
+            text: "ESPACIO DE TRABAJO"
+            color: theme.textSecondary
+            font.family: theme.fontFamily
+            font.pixelSize: 10
             font.bold: true
-            Layout.bottomMargin: 20
+            font.letterSpacing: 0.8
+            Layout.leftMargin: 6
+            Layout.bottomMargin: 4
         }
 
         NavButton {
-            text: "Chat"
-            iconCode: "comment" // <-- Sin el -16
+            text: "Agente & Chat"
+            iconCode: "comment"
             isActive: sidebar.currentIndex === 0
             onClicked: sidebar.viewRequested("chat")
         }
 
         NavButton {
-            text: "Ajustes"
-            iconCode: "settings" // <-- Sin el -16
+            text: "Motor & Modelos"
+            iconCode: "settings"
             isActive: sidebar.currentIndex === 1
             onClicked: sidebar.viewRequested("settings")
         }
 
+        NavButton {
+            text: "Apariencia & Temas"
+            iconCode: "paint-palette"
+            isActive: sidebar.currentIndex === 2
+            onClicked: sidebar.viewRequested("appearance")
+        }
+
         Item { Layout.fillHeight: true }
 
-        Text {
-            text: "v0.1.0 Alpha"
-            color: "#6c7086"
-            font.pixelSize: 12
+        Rectangle {
+            Layout.fillWidth: true
+            Layout.preferredHeight: 54
+            radius: 8
+            color: theme.bgDarkest
+            border.color: theme.borderColor
+            border.width: 1
+
+            RowLayout {
+                anchors.fill: parent
+                anchors.margins: 10
+                spacing: 10
+
+                Rectangle {
+                    width: 8; height: 8; radius: 4
+                    color: backend.engineManager.isRunning ? "#a6e3a1" : "#f38ba8"
+                }
+
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    spacing: 1
+                    Text {
+                        text: backend.engineManager.isRunning ? "Servidor Activo" : "Servidor Detenido"
+                        color: theme.textPrimary
+                        font.family: theme.fontFamily
+                        font.pixelSize: 11
+                        font.bold: true
+                    }
+                    Text {
+                        text: backend.currentEngine + " • 127.0.0.1:8080"
+                        color: theme.textSecondary
+                        font.family: theme.fontFamily
+                        font.pixelSize: 10
+                        elide: Text.ElideRight
+                        Layout.fillWidth: true
+                    }
+                }
+            }
+        }
+
+        RowLayout {
+            Layout.fillWidth: true
+            Layout.topMargin: 4
+            Text {
+                text: "v0.3.0 Alpha"
+                color: theme.textSecondary
+                font.family: theme.fontFamily
+                font.pixelSize: 11
+            }
+            Item { Layout.fillWidth: true }
+            Text {
+                text: "C++23 / Qt6"
+                color: theme.textSecondary
+                font.family: theme.monoFontFamily
+                font.pixelSize: 10
+            }
         }
     }
 }

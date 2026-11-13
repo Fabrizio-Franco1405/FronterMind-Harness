@@ -24,6 +24,13 @@ AppController::AppController(QObject *parent)
         emit chatMessagesChanged();
     });
 
+    connect(m_agentEngine, &AgentEngine::toolExecutionStarted, this, [this](const QString &toolName) {
+            if (!m_chatMessages.isEmpty() && m_chatMessages.last().startsWith("Agente: Pensando")) {
+                m_chatMessages.last() = "Agente: Pensando (ejecutando " + toolName + ")...";
+                emit chatMessagesChanged();
+            }
+    });
+
     connect(m_agentEngine, &AgentEngine::messageReceived, this, [this](const QString &response) {
         m_isGenerating = false;
         emit isGeneratingChanged();
@@ -125,7 +132,7 @@ void AppController::sendMessage(const QString &text) {
     if (!m_attachedFileContent.isEmpty()) {
         finalMessage = QStringLiteral("Contenido del archivo '%1':\n\n```\n%2\n```\n\n%3")
                            .arg(m_attachedFileName, m_attachedFileContent, text);
-        m_chatMessages.append("Tú: [📎 " + m_attachedFileName + "] " + text);
+        m_chatMessages.append("Tú: [Archivo: " + m_attachedFileName + "] " + text);
         clearAttachment();
     } else {
         m_chatMessages.append("Tú: " + text);

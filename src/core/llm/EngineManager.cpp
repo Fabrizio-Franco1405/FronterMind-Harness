@@ -51,7 +51,8 @@ void EngineManager::startServer(const QString &binaryPath, const QString &modelP
     QStringList args;
     args << "-m" << modelPath
          << "-ngl" << QString::number(gpuLayers)
-         << "-c" << QString::number(contextSize) // <-- NUEVO: Pasar contexto
+         << "-c" << QString::number(contextSize)
+         << "--jinja"
          << "--host" << "127.0.0.1"
          << "--port" << "8080";
 
