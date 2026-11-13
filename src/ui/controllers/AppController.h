@@ -2,8 +2,8 @@
 #include <QObject>
 #include <QStringList>
 #include <QVariantList>
-#include "AgentEngine.h"
-#include "EngineManager.h"
+#include "agent/AgentEngine.h"
+#include "llm/EngineManager.h"
 #include "SystemMonitor.h"
 
 class AppController : public QObject {
@@ -33,6 +33,7 @@ class AppController : public QObject {
 
 public:
     explicit AppController(QObject *parent = nullptr);
+    ~AppController() override;
 
     QString cpuUsage() const { return m_cpuUsage; }
     QString ramUsage() const { return m_ramUsage; }
@@ -81,9 +82,9 @@ private:
     void loadSettings();
     void saveSettings();
 
-    AgentEngine *m_agentEngine;
-    EngineManager *m_engineManager;
-    SystemMonitor *m_systemMonitor;
+    AgentEngine *m_agentEngine = nullptr;
+    EngineManager *m_engineManager = nullptr;
+    SystemMonitor *m_systemMonitor = nullptr;
 
     QString m_cpuUsage = "0%";
     QString m_ramUsage = "0 MB";

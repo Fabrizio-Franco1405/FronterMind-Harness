@@ -2,78 +2,117 @@
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QJsonArray>
+#include <QRegularExpression>
 #include <QUrl>
 #include <QDebug>
 
-AgentEngine::AgentEngine(QObject *parent) : QObject(parent) {
-    m_networkManager = new QNetworkAccessManager(this);
+AgentEngine::AgentEngine(QObject *parent)
+    : QObject(parent)
+    , m_networkManager(new QNetworkAccessManager(this))
+    , m_memory(4096)
+{
+}
+
+void AgentEngine::clearMemory() {
+    m_memory.clear();
+    emit tokensUpdated(0, 0, 0);
+}
+
+void AgentEngine::setMaxContextTokens(int maxTokens) {
+    m_memory.setMaxContextTokens(maxTokens);
+}
+
+void AgentEngine::setSystemPrompt(const QString &prompt) {
+    m_memory.setSystemPrompt(prompt);
+}
+
+QString AgentEngine::stripThinkingBlocks(const QString &text) {
+    QString cleaned = text;
+    static const QRegularExpression thinkRegex(
+        R"(<think>[\s\S]*?</think>\s*)",
+        QRegularExpression::CaseInsensitiveOption
+    );
+    cleaned.remove(thinkRegex);
+    return cleaned.trimmed();
 }
 
 void AgentEngine::sendMessage(const QString &modelName, const QString &text) {
+    Q_UNUSED(modelName);
+
+    if (text.trimmed().isEmpty()) {
+        return;
+    }
+
     emit startedGenerating();
 
-    QUrl url("http://127.0.0.1:8080/v1/chat/completions");
+    // 1. Guardar el mensaje del usuario en la memoria de conversación (aplica ventana deslizante automática)
+    m_memory.addUserMessage(text);
+
+    // Emitir estimación inmediata de tokens antes de recibir respuesta del servidor
+    emit tokensUpdated(m_memory.usedTokens(), 0, m_memory.usedTokens());
+
+    // 2. Construir petición HTTP con todo el historial de mensajes
+    QUrl url(m_serverUrl);
     QNetworkRequest request(url);
-    request.setHeader(QNetworkRequest::ContentTypeHeader, "application/json");
-
-    QJsonObject messageObj;
-    messageObj["role"] = "user";
-    messageObj["content"] = text;
-
-    QJsonArray messagesArray;
-    messagesArray.append(messageObj);
+    request.setHeader(QNetworkRequest::ContentTypeHeader, QStringLiteral("application/json"));
 
     QJsonObject rootObj;
-    rootObj["messages"] = messagesArray;
-    rootObj["model"] = "local";
+    rootObj["model"] = QStringLiteral("local");
+    rootObj["messages"] = m_memory.buildApiMessagesPayload();
     rootObj["temperature"] = 0.7;
     rootObj["stream"] = false;
 
     QJsonDocument doc(rootObj);
-    QNetworkReply *reply = m_networkManager->post(request, doc.toJson());
+    QNetworkReply *reply = m_networkManager->post(request, doc.toJson(QJsonDocument::Compact));
 
     connect(reply, &QNetworkReply::finished, this, [this, reply]() {
         if (reply->error() == QNetworkReply::NoError) {
-            QByteArray responseData = reply->readAll();
-            // ESTO NOS DIRÁ EN LA TERMINAL QUÉ DEVUELVE EL SERVIDOR
-            qDebug() << "RAW RESPONSE FROM LLAMA.CPP:" << responseData;
+            const QByteArray responseData = reply->readAll();
+            const QJsonDocument jsonResponse = QJsonDocument::fromJson(responseData);
+            const QJsonObject jsonObj = jsonResponse.object();
 
-            QJsonDocument jsonResponse = QJsonDocument::fromJson(responseData);
-            QJsonObject jsonObj = jsonResponse.object();
-
-            // 1. Leer Tokens
+            // 1. Actualizar conteo real de tokens desde llama-server
             if (jsonObj.contains("usage")) {
-                QJsonObject usage = jsonObj["usage"].toObject();
-                emit tokensUpdated(usage["prompt_tokens"].toInt(), usage["completion_tokens"].toInt(), usage["total_tokens"].toInt());
+                const QJsonObject usage = jsonObj["usage"].toObject();
+                const int promptTok = usage["prompt_tokens"].toInt();
+                const int compTok   = usage["completion_tokens"].toInt();
+                const int totalTok  = usage["total_tokens"].toInt();
+
+                m_memory.updateActualTokenUsage(promptTok, compTok);
+                emit tokensUpdated(promptTok, compTok, totalTok);
             }
 
-            // 2. Leer Contenido
+            // 2. Extraer respuesta del modelo y guardarla en ConversationMemory
             if (jsonObj.contains("choices")) {
-                QJsonArray choices = jsonObj["choices"].toArray();
+                const QJsonArray choices = jsonObj["choices"].toArray();
                 if (!choices.isEmpty()) {
-                    QJsonObject choice = choices[0].toObject();
-                    QJsonObject message = choice["message"].toObject();
+                    const QJsonObject choice = choices[0].toObject();
+                    const QJsonObject message = choice["message"].toObject();
                     QString content = message["content"].toString();
 
-                    // Qwen 3 a veces usa reasoning_content
                     if (content.isEmpty() && message.contains("reasoning_content")) {
                         content = message["reasoning_content"].toString();
                     }
 
                     if (content.isEmpty()) {
-                        emit errorOccurred("El modelo devolvió texto vacío.");
+                        emit errorOccurred(QStringLiteral("El modelo devolvió una respuesta vacía."));
                     } else {
+                        // Guardamos la respuesta en la memoria sin bloques <think> para no desperdiciar contexto
+                        const QString cleanForMemory = stripThinkingBlocks(content);
+                        m_memory.addAssistantMessage(cleanForMemory.isEmpty() ? content : cleanForMemory);
+
                         emit messageReceived(content);
                     }
                 } else {
-                    emit errorOccurred("El array 'choices' vino vacío.");
+                    emit errorOccurred(QStringLiteral("El servidor devolvió 'choices' vacío."));
                 }
             } else {
-                emit errorOccurred("La respuesta no tiene el campo 'choices'.");
+                emit errorOccurred(QStringLiteral("Respuesta inválida del servidor (sin campo 'choices')."));
             }
         } else {
             emit errorOccurred(reply->errorString());
         }
+
         emit finishedGenerating();
         reply->deleteLater();
     });

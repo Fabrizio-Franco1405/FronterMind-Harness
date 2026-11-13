@@ -7,12 +7,14 @@
 #include <QFile>
 #include <QFileInfo>
 
-AppController::AppController(QObject *parent) : QObject(parent) {
-    m_agentEngine = new AgentEngine(this);
-    m_engineManager = new EngineManager(this);
-    m_systemMonitor = SystemMonitor::create();
-
+AppController::AppController(QObject *parent)
+    : QObject(parent)
+    , m_agentEngine(new AgentEngine(this))
+    , m_engineManager(new EngineManager(this))
+    , m_systemMonitor(SystemMonitor::create())
+{
     loadSettings();
+    m_agentEngine->setMaxContextTokens(m_maxContext);
 
     // --- CONEXIONES CON EL CORE ---
     connect(m_agentEngine, &AgentEngine::startedGenerating, this, [this]() {
@@ -25,7 +27,9 @@ AppController::AppController(QObject *parent) : QObject(parent) {
     connect(m_agentEngine, &AgentEngine::messageReceived, this, [this](const QString &response) {
         m_isGenerating = false;
         emit isGeneratingChanged();
-        m_chatMessages.removeLast();
+        if (!m_chatMessages.isEmpty() && m_chatMessages.last().startsWith("Agente: Pensando")) {
+            m_chatMessages.removeLast();
+        }
         m_chatMessages.append("Agente: " + response);
         emit chatMessagesChanged();
     });
@@ -33,18 +37,18 @@ AppController::AppController(QObject *parent) : QObject(parent) {
     connect(m_agentEngine, &AgentEngine::errorOccurred, this, [this](const QString &error) {
         m_isGenerating = false;
         emit isGeneratingChanged();
-        m_chatMessages.removeLast();
+        if (!m_chatMessages.isEmpty() && m_chatMessages.last().startsWith("Agente: Pensando")) {
+            m_chatMessages.removeLast();
+        }
         m_chatMessages.append("Sistema: Error - " + error);
         emit chatMessagesChanged();
     });
 
-    // NUEVO: Asegurar que la UI se desbloquee siempre al terminar
     connect(m_agentEngine, &AgentEngine::finishedGenerating, this, [this]() {
         if (m_isGenerating) {
             m_isGenerating = false;
             emit isGeneratingChanged();
-            // Si por alguna razón se quedó en "Pensando...", lo quitamos
-            if (!m_chatMessages.isEmpty() && m_chatMessages.last() == "Agente: Pensando...") {
+            if (!m_chatMessages.isEmpty() && m_chatMessages.last().startsWith("Agente: Pensando")) {
                 m_chatMessages.removeLast();
                 m_chatMessages.append("Sistema: Generación terminada sin respuesta.");
                 emit chatMessagesChanged();
@@ -52,13 +56,19 @@ AppController::AppController(QObject *parent) : QObject(parent) {
         }
     });
 
-    // Conectar señal de tokens del Core
     connect(m_agentEngine, &AgentEngine::tokensUpdated, this, [this](int prompt, int completion, int total) {
+        Q_UNUSED(prompt);
+        Q_UNUSED(completion);
         m_usedTokens = total;
         emit tokensChanged();
     });
 
     startTelemetry();
+}
+
+AppController::~AppController() {
+    delete m_systemMonitor;
+    m_systemMonitor = nullptr;
 }
 
 void AppController::setCurrentEngine(const QString &engine) {
@@ -78,11 +88,11 @@ void AppController::setEnginePath(const QString &path) {
 void AppController::setMaxContext(int context) {
     if (m_maxContext == context) return;
     m_maxContext = context;
+    m_agentEngine->setMaxContextTokens(context);
     emit maxContextChanged();
     saveSettings();
 }
 
-// --- NUEVOS MÉTODOS DE ARCHIVO ---
 void AppController::attachFile(const QString &path) {
     QFile file(path);
     if (file.open(QIODevice::ReadOnly | QIODevice::Text)) {
@@ -96,28 +106,13 @@ void AppController::attachFile(const QString &path) {
 }
 
 void AppController::clearAttachment() {
-    m_attachedFileName = "";
-    m_attachedFileContent = "";
+    m_attachedFileName.clear();
+    m_attachedFileContent.clear();
     emit attachmentChanged();
 }
 
-// --- ACTUALIZA sendMessage ---
 void AppController::sendMessage(const QString &text) {
-    // Permitir enviar si hay texto O si hay un archivo adjunto
     if ((text.trimmed().isEmpty() && m_attachedFileName.isEmpty()) || m_isGenerating) return;
-
-    QString finalMessage = text;
-
-    // Si hay un archivo adjunto, lo inyectamos en el prompt
-    if (!m_attachedFileContent.isEmpty()) {
-        finalMessage = "Aquí tienes el contenido del archivo '" + m_attachedFileName + "':\n\n```\n" + m_attachedFileContent + "\n```\n\n" + text;
-        m_chatMessages.append("Tú: [Adjunto: " + m_attachedFileName + "] " + text);
-        clearAttachment(); // Limpiamos el adjunto después de enviarlo
-    } else {
-        m_chatMessages.append("Tú: " + text);
-    }
-
-    emit chatMessagesChanged();
 
     if (m_currentModel == "Ninguno") {
         m_chatMessages.append("Sistema: Carga un modelo primero.");
@@ -125,6 +120,18 @@ void AppController::sendMessage(const QString &text) {
         return;
     }
 
+    QString finalMessage = text;
+
+    if (!m_attachedFileContent.isEmpty()) {
+        finalMessage = QStringLiteral("Contenido del archivo '%1':\n\n```\n%2\n```\n\n%3")
+                           .arg(m_attachedFileName, m_attachedFileContent, text);
+        m_chatMessages.append("Tú: [📎 " + m_attachedFileName + "] " + text);
+        clearAttachment();
+    } else {
+        m_chatMessages.append("Tú: " + text);
+    }
+
+    emit chatMessagesChanged();
     m_agentEngine->sendMessage(m_currentModel, finalMessage);
 }
 
@@ -210,6 +217,7 @@ void AppController::loadSettings() {
 
 void AppController::clearChat() {
     m_chatMessages.clear();
+    m_agentEngine->clearMemory();
     m_usedTokens = 0;
     emit chatMessagesChanged();
     emit tokensChanged();
