@@ -30,6 +30,7 @@ class AppController : public QObject {
     // Tokens y Contexto
     Q_PROPERTY(int usedTokens READ usedTokens NOTIFY tokensChanged)
     Q_PROPERTY(int maxContext READ maxContext WRITE setMaxContext NOTIFY maxContextChanged)
+    Q_PROPERTY(QVariantList activeTools READ activeTools NOTIFY toolsChanged)
 
 public:
     explicit AppController(QObject *parent = nullptr);
@@ -65,6 +66,9 @@ public:
     Q_INVOKABLE void clearAttachment();
     Q_INVOKABLE void clearChat();
 
+    QVariantList activeTools() const { return m_agentEngine->activeToolsMetadata(); }
+    Q_INVOKABLE bool connectMcpServer(const QString &name, const QString &commandLine);
+
 signals:
     void telemetryChanged();
     void currentEngineChanged();
@@ -76,6 +80,7 @@ signals:
     void tokensChanged();
     void maxContextChanged();
     void attachmentChanged();
+    void toolsChanged();
 
 private:
     void startTelemetry();

@@ -229,3 +229,19 @@ void AppController::clearChat() {
     emit chatMessagesChanged();
     emit tokensChanged();
 }
+
+bool AppController::connectMcpServer(const QString &name, const QString &commandLine) {
+    QStringList parts = QProcess::splitCommand(commandLine.trimmed());
+    if (parts.isEmpty()) return false;
+    QString cmd = parts.takeFirst();
+    QString err;
+    bool ok = m_agentEngine->addMcpServer(name, cmd, parts, err);
+    if (ok) {
+        m_chatMessages.append("Sistema: Servidor MCP '" + name + "' conectado correctamente.");
+        emit toolsChanged();
+    } else {
+        m_chatMessages.append("Sistema: Error al conectar MCP '" + name + "' -> " + err);
+    }
+    emit chatMessagesChanged();
+    return ok;
+}

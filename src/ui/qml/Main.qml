@@ -27,7 +27,8 @@ ApplicationWindow {
                 onViewRequested: function(viewName) {
                     if (viewName === "chat") stackLayout.currentIndex = 0;
                     else if (viewName === "settings") stackLayout.currentIndex = 1;
-                    else if (viewName === "appearance") stackLayout.currentIndex = 2;
+                    else if (viewName === "tools") stackLayout.currentIndex = 2;
+                    else if (viewName === "appearance") stackLayout.currentIndex = 3;
                 }
             }
 
@@ -39,6 +40,7 @@ ApplicationWindow {
 
                 ChatView {}
                 SettingsView {}
+                ToolsMcpView {}
                 AppearanceView {}
             }
         }

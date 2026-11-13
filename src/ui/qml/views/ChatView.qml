@@ -15,9 +15,9 @@ Item {
         Rectangle {
             Layout.fillWidth: true
             Layout.preferredHeight: 72
-            color: "#1e1e2e"
+            color: theme.bgBase
 
-            Rectangle { width: parent.width; height: 1; color: "#313244"; anchors.bottom: parent.bottom }
+            Rectangle { width: parent.width; height: 1; color: theme.bgSurface; anchors.bottom: parent.bottom }
 
             RowLayout {
                 anchors.fill: parent
@@ -29,28 +29,29 @@ Item {
                     spacing: 4
                     Text {
                         text: "Agente Asistente"
-                        color: "#cdd6f4"
+                        color: theme.textPrimary
+                        font.family: theme.fontFamily
                         font.pixelSize: 18
                         font.bold: true
                     }
 
                     RowLayout {
                         spacing: 8
-                        Icon { iconName: "database"; iconColor: "#cba6f7"; iconSize: 11 }
+                        Icon { iconName: "database"; iconColor: theme.accentColor; iconSize: 11 }
                         Text {
                             text: backend.usedTokens + " / " + backend.maxContext + " tokens"
-                            color: "#a6adc8"
+                            color: theme.textSecondary
+                            font.family: theme.monoFontFamily
                             font.pixelSize: 11
-                            font.family: "monospace"
                         }
                         Rectangle {
                             width: 70; height: 5; radius: 3
-                            color: "#313244"
+                            color: theme.bgSurface
                             Rectangle {
                                 width: Math.min(parent.width, (backend.usedTokens / Math.max(1, backend.maxContext)) * parent.width)
                                 height: parent.height
                                 radius: 3
-                                color: (backend.usedTokens / Math.max(1, backend.maxContext)) > 0.85 ? "#f38ba8" : "#cba6f7"
+                                color: (backend.usedTokens / Math.max(1, backend.maxContext)) > 0.85 ? "#f38ba8" : theme.accentColor
                                 Behavior on width { NumberAnimation { duration: 180 } }
                             }
                         }
@@ -59,7 +60,7 @@ Item {
 
                 Item { Layout.fillWidth: true }
 
-                Text { text: "Modelo:"; color: "#a6adc8"; font.pixelSize: 13 }
+                Text { text: "Modelo:"; color: theme.textSecondary; font.family: theme.fontFamily; font.pixelSize: 13 }
 
                 ComboBox {
                     id: modelSelector
@@ -75,14 +76,15 @@ Item {
                         leftPadding: 12
                         rightPadding: 24
                         text: modelSelector.currentIndex >= 0 ? modelSelector.textAt(modelSelector.currentIndex) : "Seleccionar modelo"
-                        color: "#cdd6f4"
+                        color: theme.textPrimary
+                        font.family: theme.fontFamily
                         font.pixelSize: 13
                         elide: Text.ElideRight
                         verticalAlignment: Text.AlignVCenter
                     }
                     background: Rectangle {
-                        color: "#181825"
-                        border.color: modelSelector.hovered ? "#cba6f7" : "#45475a"
+                        color: theme.bgSidebar
+                        border.color: modelSelector.hovered ? theme.accentColor : theme.borderColor
                         radius: 8
                         Behavior on border.color { ColorAnimation { duration: 100 } }
                     }
@@ -93,8 +95,8 @@ Item {
                     Layout.preferredWidth: 36
                     Layout.preferredHeight: 36
                     radius: 8
-                    color: clearMouse.containsMouse ? "#313244" : "#181825"
-                    border.color: clearMouse.containsMouse ? "#f38ba8" : "#45475a"
+                    color: clearMouse.containsMouse ? theme.bgSurface : theme.bgSidebar
+                    border.color: clearMouse.containsMouse ? "#f38ba8" : theme.borderColor
                     border.width: 1
                     Behavior on color { ColorAnimation { duration: 100 } }
 
@@ -129,29 +131,31 @@ Item {
                 Rectangle {
                     Layout.alignment: Qt.AlignHCenter
                     width: 72; height: 72; radius: 20
-                    color: "#181825"
-                    border.color: "#45475a"
+                    color: theme.bgSidebar
+                    border.color: theme.borderColor
                     border.width: 1
 
                     Icon {
                         anchors.centerIn: parent
                         iconName: "stars"
-                        iconColor: "#cba6f7"
+                        iconColor: theme.accentColor
                         iconSize: 36
                     }
                 }
 
                 Text {
                     text: "¿En qué estamos trabajando hoy?"
-                    color: "#cdd6f4"
+                    color: theme.textPrimary
+                    font.family: theme.fontFamily
                     font.pixelSize: 24
                     font.bold: true
                     Layout.alignment: Qt.AlignHCenter
                 }
 
                 Text {
-                    text: "Tu agente local con memoria contextual está listo para analizar código, diseñar arquitectura o depurar errores."
-                    color: "#6c7086"
+                    text: "Tu agente local con herramientas de archivos, terminal, internet y MCP está listo."
+                    color: theme.textSecondary
+                    font.family: theme.fontFamily
                     font.pixelSize: 13
                     Layout.alignment: Qt.AlignHCenter
                 }
@@ -162,7 +166,7 @@ Item {
                 anchors.fill: parent
                 clip: true
                 spacing: 22
-                cacheBuffer: 2000 // Mantiene delegados en caché para scroll instantáneo
+                cacheBuffer: 2000
                 model: backend.chatMessages
                 visible: backend.chatMessages.length > 0
 
@@ -185,8 +189,8 @@ Item {
                     Rectangle {
                         id: avatar
                         width: 34; height: 34; radius: 10
-                        color: isUser ? "#89b4fa" : "#181825"
-                        border.color: isUser ? "transparent" : "#cba6f7"
+                        color: isUser ? theme.userBubbleColor : theme.bgSidebar
+                        border.color: isUser ? "transparent" : theme.accentColor
                         border.width: isUser ? 0 : 1
                         anchors.left: isUser ? undefined : parent.left
                         anchors.right: isUser ? parent.right : undefined
@@ -195,16 +199,20 @@ Item {
                         Icon {
                             anchors.centerIn: parent
                             iconName: isUser ? "user" : "stars"
-                            iconColor: isUser ? "#11111b" : "#cba6f7"
+                            iconColor: isUser ? "#11111b" : theme.accentColor
                             iconSize: 16
                         }
                     }
 
                     Rectangle {
                         id: bubble
+                        readonly property real maxBubbleWidth: parent.width * 0.85
+
                         width: (isSystem || isThinking)
                                ? statusRow.implicitWidth + 32
-                               : (isUser ? Math.min(parent.width * 0.78, userText.implicitWidth + 28) : parent.width * 0.86)
+                               : (isUser
+                                  ? Math.min(parent.width * 0.78, userText.implicitWidth + 28)
+                                  : Math.min(maxBubbleWidth, markdownView.implicitWidth + 28))
                         height: (isSystem || isThinking)
                                 ? Math.max(40, statusText.implicitHeight + 24)
                                 : (isUser ? userText.implicitHeight + 24 : markdownView.implicitHeight + 28)
@@ -216,11 +224,10 @@ Item {
                         anchors.leftMargin: isUser ? 0 : 14
                         anchors.rightMargin: isUser ? 14 : 0
 
-                        color: isUser ? "#89b4fa" : (isThinking ? "#181825" : "#26273a")
-                        border.color: isUser ? "#89b4fa" : (isSystem ? "#f38ba8" : "#3b3d54")
+                        color: isUser ? theme.userBubbleColor : (isThinking ? theme.bgSidebar : theme.bgSurface)
+                        border.color: isUser ? theme.userBubbleColor : (isSystem ? "#f38ba8" : theme.borderColor)
                         border.width: isUser ? 0 : 1
 
-                        // Estado de Sistema / Pensando con icono vectorial puro (0 emojis)
                         RowLayout {
                             id: statusRow
                             visible: isSystem || isThinking
@@ -231,7 +238,7 @@ Item {
 
                             Icon {
                                 iconName: isThinking ? "hourglass" : "warning"
-                                iconColor: isThinking ? "#cba6f7" : "#f38ba8"
+                                iconColor: isThinking ? theme.accentColor : "#f38ba8"
                                 iconSize: 14
                                 Layout.alignment: Qt.AlignVCenter
                             }
@@ -240,7 +247,8 @@ Item {
                                 id: statusText
                                 Layout.fillWidth: true
                                 text: modelData.replace("Sistema: ", "").replace("Agente: ", "")
-                                color: isThinking ? "#a6adc8" : "#f38ba8"
+                                color: isThinking ? theme.textSecondary : "#f38ba8"
+                                font.family: theme.fontFamily
                                 font.italic: isThinking
                                 font.pixelSize: 13
                                 wrapMode: Text.Wrap
@@ -254,7 +262,8 @@ Item {
                             width: parent.width - 28
                             text: modelData.replace("Tú: ", "")
                             color: "#11111b"
-                            font.pixelSize: 14
+                            font.family: theme.fontFamily
+                            font.pixelSize: theme.baseFontSize
                             font.weight: Font.Medium
                             wrapMode: Text.Wrap
                             lineHeight: 1.25
@@ -264,7 +273,8 @@ Item {
                             id: markdownView
                             visible: isMarkdown
                             x: 14; y: 14
-                            width: parent.width - 28
+                            maxAvailableWidth: bubble.maxBubbleWidth - 28
+                            width: bubble.width - 28
                             markdownText: isMarkdown ? modelData.replace("Agente: ", "") : ""
                         }
                     }

@@ -87,6 +87,13 @@ Rectangle {
         }
 
         NavButton {
+            text: "Herramientas & MCP"
+            iconCode: "link"
+            isActive: sidebar.currentIndex === 2
+            onClicked: sidebar.viewRequested("tools")
+        }
+
+        NavButton {
             text: "Apariencia & Temas"
             iconCode: "paint-palette"
             isActive: sidebar.currentIndex === 2

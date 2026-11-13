@@ -15,6 +15,8 @@ qt_add_library(FrontCore STATIC
     tools/TerminalTool.h
     tools/WebTools.cpp
     tools/WebTools.h
+    mcp/McpClient.cpp
+    mcp/McpClient.h
 )
 
 target_include_directories(FrontCore PUBLIC

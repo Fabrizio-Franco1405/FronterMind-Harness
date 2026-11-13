@@ -1,23 +1,19 @@
 #include "AgentEngine.h"
 #include "tools/FileSystemTools.h"
+#include "tools/TerminalTool.h"
+#include "tools/WebTools.h"
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QJsonArray>
 #include <QRegularExpression>
 #include <QUrl>
 #include <QDebug>
-#include "tools/TerminalTool.h"
-#include "tools/WebTools.h"
 
 AgentEngine::AgentEngine(QObject *parent)
     : QObject(parent)
     , m_networkManager(new QNetworkAccessManager(this))
     , m_memory(4096)
 {
-    // Registrar herramientas de Sistema de Archivos al iniciar el motor
-    registerFileSystemTools(m_toolRegistry);
-    registerFileSystemTools(m_toolRegistry);
-    registerTerminalTools(m_toolRegistry);
     registerFileSystemTools(m_toolRegistry);
     registerTerminalTools(m_toolRegistry);
     registerWebTools(m_toolRegistry);
@@ -34,6 +30,19 @@ void AgentEngine::setMaxContextTokens(int maxTokens) {
 
 void AgentEngine::setSystemPrompt(const QString &prompt) {
     m_memory.setSystemPrompt(prompt);
+}
+
+bool AgentEngine::addMcpServer(const QString &name, const QString &command, const QStringList &args, QString &errorOut) {
+    auto *client = new McpClient(name, this);
+    if (!client->connectToServer(command, args, errorOut)) {
+        delete client;
+        return false;
+    }
+    for (const McpToolInfo &info : client->discoveredTools()) {
+        m_toolRegistry.registerTool(std::make_unique<McpBridgeTool>(client, info));
+    }
+    m_mcpClients.append(client);
+    return true;
 }
 
 QString AgentEngine::stripThinkingBlocks(const QString &text) {
@@ -57,7 +66,6 @@ void AgentEngine::sendMessage(const QString &modelName, const QString &text) {
     m_memory.addUserMessage(text);
     emit tokensUpdated(m_memory.usedTokens(), 0, m_memory.usedTokens());
 
-    // Iniciar el ciclo ReAct (máximo 8 pasos consecutivos de herramientas por mensaje)
     performInferenceStep(8);
 }
 
@@ -75,7 +83,7 @@ void AgentEngine::performInferenceStep(int remainingSteps) {
     QJsonObject rootObj;
     rootObj["model"] = QStringLiteral("local");
     rootObj["messages"] = m_memory.buildApiMessagesPayload();
-    rootObj["temperature"] = 0.4; // Temperatura más precisa para código y uso de herramientas
+    rootObj["temperature"] = 0.4;
     rootObj["stream"] = false;
 
     if (!m_toolRegistry.isEmpty()) {
@@ -138,7 +146,6 @@ void AgentEngine::performInferenceStep(int remainingSteps) {
                     ToolCallData call;
                     call.id = tcObj["id"].toString(QStringLiteral("call_1"));
                     call.name = fnObj["name"].toString();
-                    // arguments puede venir como string JSON o como objeto JSON
                     if (fnObj["arguments"].isString()) {
                         call.argumentsJson = fnObj["arguments"].toString();
                     } else if (fnObj["arguments"].isObject()) {
@@ -149,23 +156,20 @@ void AgentEngine::performInferenceStep(int remainingSteps) {
                     parsedCalls.append(call);
                 }
 
-                // Guardar la petición de herramientas del asistente en la memoria
                 m_memory.addAssistantMessage(stripThinkingBlocks(content), parsedCalls);
 
-                // Ejecutar cada herramienta solicitada y guardar su resultado en la memoria
                 for (const ToolCallData &call : parsedCalls) {
                     emit toolExecutionStarted(call.name);
                     const ToolResult res = m_toolRegistry.executeTool(call.name, call.argumentsJson);
                     m_memory.addToolResultMessage(call.id, call.name, res.output);
                 }
 
-                // Continuar el bucle ReAct enviando los resultados de vuelta al modelo
                 performInferenceStep(remainingSteps - 1);
                 return;
             }
         }
 
-        // 2. Si no hubo llamadas a herramientas, es la respuesta final al usuario
+        // 2. Respuesta final al usuario
         if (content.isEmpty() && message.contains("reasoning_content")) {
             content = message["reasoning_content"].toString();
         }

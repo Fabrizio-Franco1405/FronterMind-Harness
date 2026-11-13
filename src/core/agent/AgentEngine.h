@@ -4,6 +4,7 @@
 #include <QNetworkReply>
 #include "context/ConversationMemory.h"
 #include "tools/ToolRegistry.h"
+#include "mcp/McpClient.h"
 
 class AgentEngine : public QObject {
     Q_OBJECT
@@ -25,6 +26,9 @@ public:
 
     ToolRegistry& toolRegistry() { return m_toolRegistry; }
 
+    bool addMcpServer(const QString &name, const QString &command, const QStringList &args, QString &errorOut);
+    QVariantList activeToolsMetadata() const { return m_toolRegistry.getRegisteredToolsMetadata(); }
+
 signals:
     void messageReceived(const QString &response);
     void errorOccurred(const QString &error);
@@ -41,4 +45,5 @@ private:
     ConversationMemory m_memory;
     ToolRegistry m_toolRegistry;
     QString m_serverUrl = QStringLiteral("http://127.0.0.1:8080/v1/chat/completions");
+    QList<McpClient*> m_mcpClients;
 };

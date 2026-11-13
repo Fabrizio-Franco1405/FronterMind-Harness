@@ -5,7 +5,19 @@ import QtQuick.Layouts
 Item {
     id: root
     property string markdownText: ""
+    property real maxAvailableWidth: 750
 
+    // Calculamos el ancho ideal usando implicitWidth (ancho sin wrap) de cada bloque
+    implicitWidth: {
+        var maxW = 0
+        for (var i = 0; i < blockRepeater.count; ++i) {
+            var item = blockRepeater.itemAt(i)
+            if (item) {
+                maxW = Math.max(maxW, item.unwrappedWidth)
+            }
+        }
+        return Math.min(root.maxAvailableWidth, Math.max(120, maxW))
+    }
     implicitHeight: layout.implicitHeight
 
     MarkdownParser {
@@ -19,6 +31,7 @@ Item {
         spacing: 8
 
         Repeater {
+            id: blockRepeater
             model: bridge.blocks
 
             delegate: Item {
@@ -26,10 +39,21 @@ Item {
                 Layout.fillWidth: true
                 Layout.topMargin: isCode ? 4 : 0
                 Layout.bottomMargin: isCode ? 4 : 0
-                implicitHeight: isCode ? codeContainer.implicitHeight : richTextItem.implicitHeight
+                implicitHeight: isCode ? codeContainer.implicitHeight : richTextItem.contentHeight
 
                 readonly property var blockData: modelData
                 readonly property bool isCode: blockData.type === "code"
+
+                // Si es código o tiene listas/múltiples párrafos, usa el ancho amplio;
+                // si es una frase corta, usa implicitWidth + margen de seguridad.
+                readonly property real unwrappedWidth: {
+                    if (isCode) return root.maxAvailableWidth
+                    var html = blockData.content || ""
+                    if (html.indexOf("<ul") !== -1 || html.indexOf("<ol") !== -1 || html.indexOf("<table") !== -1) {
+                        return Math.min(root.maxAvailableWidth, Math.max(480, richTextItem.implicitWidth + 24))
+                    }
+                    return Math.ceil(richTextItem.implicitWidth) + 16
+                }
 
                 TextEdit {
                     id: richTextItem
@@ -115,7 +139,6 @@ Item {
                                     Layout.fillWidth: true
                                 }
 
-                                // Botón Copiar con icono SVG Qlementine (0 emojis)
                                 Rectangle {
                                     Layout.preferredWidth: copyBtnRow.implicitWidth + 18
                                     Layout.preferredHeight: 24
@@ -172,7 +195,7 @@ Item {
 
                         Item {
                             Layout.fillWidth: true
-                            Layout.preferredHeight: codeTextEdit.implicitHeight + 28
+                            Layout.preferredHeight: codeTextEdit.contentHeight + 28
 
                             TextEdit {
                                 id: codeTextEdit

@@ -21,6 +21,7 @@ qt_add_qml_module(FrontUI
         qml/components/Icon.qml
         qml/views/ChatView.qml
         qml/views/SettingsView.qml
+        qml/views/ToolsMcpView.qml
         qml/views/AppearanceView.qml
     OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/FronterMind/UI"
 )

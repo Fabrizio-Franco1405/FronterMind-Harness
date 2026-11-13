@@ -4,6 +4,8 @@
 #include <QJsonArray>
 #include <QString>
 #include <memory>
+#include <QVariantList>
+#include <QVariantMap>
 
 class ToolRegistry {
 public:
@@ -18,6 +20,17 @@ public:
 
     // Construye el array "tools" para el payload de llama-server
     QJsonArray buildToolsJson() const;
+    QVariantList getRegisteredToolsMetadata() const {
+            QVariantList list;
+            for (auto it = m_tools.constBegin(); it != m_tools.constEnd(); ++it) {
+                QVariantMap map;
+                map["name"] = it.value()->name();
+                map["description"] = it.value()->description();
+                map["isMcp"] = it.value()->description().startsWith("[MCP:");
+                list.append(map);
+            }
+            return list;
+        }
 
     bool isEmpty() const { return m_tools.isEmpty(); }
 

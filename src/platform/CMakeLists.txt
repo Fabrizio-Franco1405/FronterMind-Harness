@@ -12,10 +12,9 @@ target_link_libraries(FrontPlatform PUBLIC Qt6::Core)
 
 if(WIN32)
     target_sources(FrontPlatform PRIVATE SystemMonitorWindows.cpp)
-    target_link_libraries(FrontPlatform PRIVATE psapi)
+    target_link_libraries(FrontPlatform PRIVATE psapi dxgi)
 elseif(APPLE)
     # target_sources(FrontPlatform PRIVATE SystemMonitorMacos.cpp)
 else()
-    # Linux por defecto
     target_sources(FrontPlatform PRIVATE SystemMonitorLinux.cpp)
 endif()
