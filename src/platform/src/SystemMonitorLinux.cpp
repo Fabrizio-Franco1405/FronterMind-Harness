@@ -1,85 +1,204 @@
 #include "SystemMonitor.h"
 #include <QFile>
-#include <QTextStream>
-#include <QRegularExpression>
+#include <QByteArray>
+#include <QList>
+#include <QDir>
+#include <QFileInfo>
+#include <unistd.h>
 
 class SystemMonitorLinux : public SystemMonitor {
 public:
-    SystemMonitorLinux() = default;
+    SystemMonitorLinux() {
+        readCpuStats(m_lastTotal, m_lastIdle);
+        detectBestGpu();
+    }
 
     QString getCpuUsage() override {
-        static long lastUser = 0, lastNice = 0, lastSystem = 0, lastIdle = 0;
-        QFile statFile("/proc/stat");
-        if (statFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
-            QTextStream in(&statFile);
-            QStringList parts = in.readLine().split(QRegularExpression("\\s+"), Qt::SkipEmptyParts);
-            if (parts.size() > 4) {
-                long user = parts[1].toLong(), nice = parts[2].toLong(), system = parts[3].toLong(), idle = parts[4].toLong();
-                long total = (user - lastUser) + (nice - lastNice) + (system - lastSystem) + (idle - lastIdle);
-                long work = (user - lastUser) + (nice - lastNice) + (system - lastSystem);
-                lastUser = user; lastNice = nice; lastSystem = system; lastIdle = idle;
-                if (total > 0) return QString::number((work * 100) / total) + "%";
-            }
+        unsigned long long currentTotal = 0, currentIdle = 0;
+        if (!readCpuStats(currentTotal, currentIdle)) {
+            return "0%";
         }
-        return "0%";
+
+        unsigned long long totalDiff = currentTotal - m_lastTotal;
+        unsigned long long idleDiff  = currentIdle - m_lastIdle;
+
+        m_lastTotal = currentTotal;
+        m_lastIdle  = currentIdle;
+
+        if (totalDiff == 0) {
+            return "0%";
+        }
+
+        double usage = (static_cast<double>(totalDiff - idleDiff) * 100.0) / static_cast<double>(totalDiff);
+        return QString::number(qBound(0, static_cast<int>(usage + 0.5), 100)) + "%";
     }
 
     QString getRamUsage() override {
         QFile memFile("/proc/meminfo");
-        if (memFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
-            QTextStream in(&memFile);
-            long totalMem = 0, availMem = 0;
+        if (!memFile.open(QIODevice::ReadOnly)) {
+            return "0.0 GB";
+        }
 
-            // Regex estricta: Busca el nombre, luego espacios, luego captura el número
-            QRegularExpression totalRe("MemTotal:\\s+(\\d+)");
-            QRegularExpression availRe("MemAvailable:\\s+(\\d+)");
+        const QByteArray content = memFile.readAll();
+        const QList<QByteArray> lines = content.split('\n');
 
-            while (!in.atEnd()) {
-                QString line = in.readLine();
+        long long totalMemKB = 0;
+        long long availMemKB = 0;
 
-                QRegularExpressionMatch match = totalRe.match(line);
-                if (match.hasMatch()) totalMem = match.captured(1).toLong();
-
-                match = availRe.match(line);
-                if (match.hasMatch()) availMem = match.captured(1).toLong();
+        for (const QByteArray &line : lines) {
+            if (line.startsWith("MemTotal:")) {
+                totalMemKB = extractKBValue(line);
+            } else if (line.startsWith("MemAvailable:")) {
+                availMemKB = extractKBValue(line);
             }
-
-            if (totalMem > 0 && availMem > 0) {
-                double usedGB = (totalMem - availMem) / 1024.0 / 1024.0;
-                return QString::number(usedGB, 'f', 1) + " GB";
+            if (totalMemKB > 0 && availMemKB > 0) {
+                break;
             }
         }
-        return "0 GB";
+
+        if (totalMemKB > 0 && availMemKB > 0) {
+            double usedGB = static_cast<double>(totalMemKB - availMemKB) / (1024.0 * 1024.0);
+            double totalGB = static_cast<double>(totalMemKB) / (1024.0 * 1024.0);
+            return QString("%1 / %2 GB")
+                .arg(QString::number(usedGB, 'f', 1),
+                     QString::number(totalGB, 'f', 1));
+        }
+        return "0.0 GB";
     }
 
     QString getVramUsage() override {
-        QFile vramFile("/sys/class/drm/card1/device/mem_info_vram_used");
-        if (!vramFile.exists()) vramFile.setFileName("/sys/class/drm/card0/device/mem_info_vram_used");
+        if (m_vramUsedPath.isEmpty()) {
+            detectBestGpu();
+        }
 
-        if (vramFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
-            QTextStream in(&vramFile);
-            long long vramBytes = in.readLine().toLongLong();
-            return QString::number(vramBytes / (1024 * 1024)) + " MB";
+        if (!m_vramUsedPath.isEmpty()) {
+            QFile vramFile(m_vramUsedPath);
+            if (vramFile.open(QIODevice::ReadOnly)) {
+                long long vramBytes = vramFile.readAll().trimmed().toLongLong();
+                long long vramMB = vramBytes / (1024 * 1024);
+
+                if (m_vramTotalMB > 0) {
+                    return QString("%1 / %2 MB").arg(vramMB).arg(m_vramTotalMB);
+                }
+                return QString::number(vramMB) + " MB";
+            }
         }
         return "N/A";
     }
 
     QString getAppMemory() override {
-        QFile statusFile("/proc/self/status");
-        if (statusFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
-            QTextStream in(&statusFile);
-            QRegularExpression vmRe("VmRSS:\\s+(\\d+)");
-
-            while (!in.atEnd()) {
-                QString line = in.readLine();
-                QRegularExpressionMatch match = vmRe.match(line);
-                if (match.hasMatch()) {
-                    return QString::number(match.captured(1).toLong() / 1024) + " MB";
-                }
+        QFile statmFile("/proc/self/statm");
+        if (statmFile.open(QIODevice::ReadOnly)) {
+            const QList<QByteArray> parts = statmFile.readAll().trimmed().split(' ');
+            if (parts.size() >= 2) {
+                long long rssPages = parts[1].toLongLong();
+                long pageSizeKB = sysconf(_SC_PAGESIZE) / 1024;
+                long long rssMB = (rssPages * pageSizeKB) / 1024;
+                return QString::number(rssMB) + " MB";
             }
         }
         return "0 MB";
     }
+
+private:
+    unsigned long long m_lastTotal = 0;
+    unsigned long long m_lastIdle  = 0;
+    QString m_vramUsedPath;
+    long long m_vramTotalMB = 0;
+
+    void detectBestGpu() {
+        QDir drmDir("/sys/class/drm");
+        // Filtrar solo card0, card1, card2... (ignorando conectores como card0-DP-1)
+        const QStringList cards = drmDir.entryList(QStringList() << "card[0-9]*", QDir::Dirs | QDir::NoDotAndDotDot);
+
+        long long bestScore = -1;
+        QString bestUsedPath;
+        long long bestTotalMB = 0;
+
+        for (const QString &card : cards) {
+            if (card.contains('-')) continue; // Ignorar salidas de video (ej. card0-HDMI-A-1)
+
+            QString basePath = QString("/sys/class/drm/%1/device").arg(card);
+            QString usedPath = basePath + "/mem_info_vram_used";
+            QString totalPath = basePath + "/mem_info_vram_total";
+            QString visTotalPath = basePath + "/mem_info_vis_vram_total";
+
+            if (!QFileInfo::exists(usedPath)) continue;
+
+            long long totalBytes = readSysfsNumber(totalPath);
+            long long visTotalBytes = readSysfsNumber(visTotalPath);
+
+            // Criterio para priorizar GPU dedicada sobre integrada (APU):
+            // 1. En una GPU dedicada (como tu RX 5700 XT), mem_info_vram_total es mayor (8 GB)
+            //    y normalmente en APUs Ryzen (como el 5700G) el carveout es pequeño (512MB - 4GB).
+            // 2. Además, en GPUs dedicadas el symlink de /sys/class/drm/cardX/device atraviesa
+            //    un puente PCIe adicional (mayor profundidad en /sys/devices/pci...), mientras
+            //    que la APU está integrada en el bus interno del SoC.
+            QString canonicalDevicePath = QFileInfo(basePath).canonicalFilePath();
+            int pciDepth = canonicalDevicePath.count('/');
+
+            // Puntuamos combinando la cantidad de VRAM total + un bonus si cuelga de un bridge PCIe externo
+            long long score = totalBytes + (static_cast<long long>(pciDepth) * 512LL * 1024LL * 1024LL);
+
+            // Si mem_info_vram_total es mayor al visible o mayor a 4GB, es 100% dedicada
+            if (totalBytes > 4LL * 1024 * 1024 * 1024 || totalBytes > visTotalBytes) {
+                score += 100LL * 1024 * 1024 * 1024;
+            }
+
+            if (score > bestScore) {
+                bestScore = score;
+                bestUsedPath = usedPath;
+                bestTotalMB = totalBytes / (1024 * 1024);
+            }
+        }
+
+        m_vramUsedPath = bestUsedPath;
+        m_vramTotalMB  = bestTotalMB;
+    }
+
+    static long long readSysfsNumber(const QString &path) {
+        QFile file(path);
+        if (file.open(QIODevice::ReadOnly)) {
+            return file.readAll().trimmed().toLongLong();
+        }
+        return 0;
+    }
+
+    static long long extractKBValue(const QByteArray &line) {
+        const QList<QByteArray> parts = line.simplified().split(' ');
+        if (parts.size() >= 2) {
+            return parts[1].toLongLong();
+        }
+        return 0;
+    }
+
+    static bool readCpuStats(unsigned long long &totalOut, unsigned long long &idleOut) {
+        QFile statFile("/proc/stat");
+        if (!statFile.open(QIODevice::ReadOnly)) {
+            return false;
+        }
+
+        QByteArray firstLine = statFile.readLine().simplified();
+        const QList<QByteArray> parts = firstLine.split(' ');
+        if (parts.size() < 5) {
+            return false;
+        }
+
+        unsigned long long user    = parts.value(1).toULongLong();
+        unsigned long long nice    = parts.value(2).toULongLong();
+        unsigned long long system  = parts.value(3).toULongLong();
+        unsigned long long idle    = parts.value(4).toULongLong();
+        unsigned long long iowait  = parts.value(5).toULongLong();
+        unsigned long long irq     = parts.value(6).toULongLong();
+        unsigned long long softirq = parts.value(7).toULongLong();
+        unsigned long long steal   = parts.value(8).toULongLong();
+
+        idleOut  = idle + iowait;
+        totalOut = user + nice + system + idle + iowait + irq + softirq + steal;
+        return true;
+    }
 };
 
-SystemMonitor* SystemMonitor::create() { return new SystemMonitorLinux(); }
+SystemMonitor* SystemMonitor::create() {
+    return new SystemMonitorLinux();
+}
