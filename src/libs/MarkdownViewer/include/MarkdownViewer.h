@@ -1,6 +1,7 @@
 #pragma once
 #include <QObject>
 #include <QString>
+#include <QVariantList>
 #include <QtQml/qqmlregistration.h>
 
 class MarkdownParser : public QObject {
@@ -8,7 +9,7 @@ class MarkdownParser : public QObject {
     QML_NAMED_ELEMENT(MarkdownParser)
 
     Q_PROPERTY(QString markdown READ markdown WRITE setMarkdown NOTIFY markdownChanged)
-    Q_PROPERTY(QString html READ html NOTIFY htmlChanged)
+    Q_PROPERTY(QVariantList blocks READ blocks NOTIFY blocksChanged)
 
 public:
     explicit MarkdownParser(QObject *parent = nullptr);
@@ -16,13 +17,18 @@ public:
     QString markdown() const { return m_markdown; }
     void setMarkdown(const QString &md);
 
-    QString html() const { return m_html; }
+    QVariantList blocks() const { return m_blocks; }
+
+    Q_INVOKABLE void copyToClipboard(const QString &text) const;
 
 signals:
     void markdownChanged();
-    void htmlChanged();
+    void blocksChanged();
 
 private:
+    static QString highlightCode(const QString &code, const QString &language);
+    static QString styleHtmlForQt(const QString &rawHtml);
+
     QString m_markdown;
-    QString m_html;
+    QVariantList m_blocks;
 };

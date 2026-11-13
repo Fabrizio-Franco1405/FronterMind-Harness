@@ -76,7 +76,7 @@ Item {
                         }
                         Icon {
                             anchors.centerIn: parent;
-                            iconName: "trash"; // Si "trash" no existe, prueba con "delete" o "broom"
+                            iconName: "trash";
                             iconColor: "#f38ba8";
                             iconSize: 16
                         }
@@ -96,7 +96,7 @@ Item {
                 visible: backend.chatMessages.length === 0
 
                 Icon {
-                    iconName: "stars" // Icono de chat/robot
+                    iconName: "stars"
                     iconColor: "#cba6f7"
                     iconSize: 64
                     anchors.horizontalCenter: parent.horizontalCenter
@@ -132,7 +132,9 @@ Item {
                     height: bubble.height
 
                     property bool isUser: modelData.startsWith("Tú:")
+                    property bool isThinking: modelData === "Agente: Pensando..." || modelData.startsWith("Agente: Pensando")
                     property bool isSystem: modelData.startsWith("Sistema:")
+                    property bool isMarkdown: !isUser && !isSystem && !isThinking
 
                     Rectangle {
                         id: avatar
@@ -152,8 +154,12 @@ Item {
 
                     Rectangle {
                         id: bubble
-                        width: Math.min(parent.width * 0.8, messageText.implicitWidth + 30)
-                        height: messageText.implicitHeight + 24
+                        width: (isSystem || isThinking)
+                                ? systemText.implicitWidth + 28
+                                : (isUser ? Math.min(parent.width * 0.8, userText.implicitWidth + 24) : parent.width * 0.85)
+                        height: (isSystem || isThinking)
+                                ? systemText.implicitHeight + 24
+                                : (isUser ? userText.implicitHeight + 24 : markdownView.implicitHeight + 24)
                         radius: 12
 
                         anchors.top: parent.top
@@ -162,15 +168,41 @@ Item {
                         anchors.leftMargin: isUser ? 0 : 15
                         anchors.rightMargin: isUser ? 15 : 0
 
-                        color: isSystem ? "transparent" : (isUser ? "#89b4fa" : "#313244")
-                        border.color: isSystem ? "transparent" : (isUser ? "#89b4fa" : "#45475a")
-                        border.width: isSystem ? 0 : 1
+                        color: isUser ? "#89b4fa" : "#313244"
+                        border.color: isUser ? "#89b4fa" : "#45475a"
+                        border.width: isUser ? 0 : 1
+
+                        Text {
+                            id: systemText
+                            visible: isSystem || isThinking
+                            x: 14; y: 12
+                            width: parent.width - 28
+                            text: modelData.replace("Sistema: ", "").replace("Agente: ", "")
+                            // Gris suave para "Pensando...", rojo suave solo para avisos del Sistema
+                            color: isThinking ? "#a6adc8" : "#f38ba8"
+                            font.italic: isThinking
+                            font.pixelSize: 14
+                            wrapMode: Text.Wrap
+                        }
+
+                        Text {
+                            id: userText
+                            visible: isUser
+                            x: 12; y: 12
+                            width: parent.width - 24
+                            text: modelData.replace("Tú: ", "")
+                            color: "#1e1e2e"
+                            font.pixelSize: 14
+                            wrapMode: Text.Wrap
+                            lineHeight: 1.2
+                        }
 
                         MarkdownView {
-                            id: messageText
-                            anchors.centerIn: parent
-                            width: Math.min(bubble.parent.width * 0.8, messageText.implicitWidth + 10)
-                            markdownText: modelData.replace("Tú: ", "").replace("Agente: ", "").replace("Sistema: ", "")
+                            id: markdownView
+                            visible: isMarkdown
+                            x: 12; y: 12
+                            width: parent.width - 24
+                            markdownText: isMarkdown ? modelData.replace("Agente: ", "") : ""
                         }
                     }
                 }
