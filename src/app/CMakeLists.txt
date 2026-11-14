@@ -15,4 +15,9 @@ target_link_libraries(FronterMind PRIVATE
     FrontMarkdownViewerplugin
     qlementine-icons
     Qt6::Svg
+    Qt6::QuickControls2
 )
+
+if(WIN32)
+    target_link_libraries(FronterMind PRIVATE dwmapi)
+endif()

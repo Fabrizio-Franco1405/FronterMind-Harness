@@ -7,6 +7,22 @@
 #include <QFile>
 #include <QFileInfo>
 #include <QProcess>
+#include <QUrl>
+#include <QDir>
+
+static QString normalizeFilePath(const QString &rawPath) {
+    QString p = rawPath.trimmed();
+    if (p.startsWith("file://")) {
+        p = QUrl(p).toLocalFile();
+    }
+#ifdef _WIN32
+    // Exclusivo para Windows: si quedó "/C:/Users/...", quitar la primera barra "/"
+    if (p.length() >= 3 && p[0] == '/' && p[1].isLetter() && p[2] == ':') {
+        p.remove(0, 1);
+    }
+#endif
+    return QDir::fromNativeSeparators(p);
+}
 
 AppController::AppController(QObject *parent)
     : QObject(parent)
@@ -98,8 +114,9 @@ void AppController::setCurrentEngine(const QString &engine) {
 }
 
 void AppController::setEnginePath(const QString &path) {
-    if (m_enginePath == path) return;
-    m_enginePath = path;
+    const QString clean = normalizeFilePath(path);
+    if (m_enginePath == clean) return;
+    m_enginePath = clean;
     emit enginePathChanged();
     saveSettings();
 }
@@ -113,8 +130,7 @@ void AppController::setMaxContext(int context) {
 }
 
 void AppController::setWorkspacePath(const QString &path) {
-    QString cleanPath = path;
-    cleanPath.replace("file://", "");
+    const QString cleanPath = normalizeFilePath(path);
     if (cleanPath.isEmpty() || cleanPath == m_agentEngine->workspaceDir()) return;
 
     m_agentEngine->setWorkspaceDir(cleanPath);
@@ -123,9 +139,10 @@ void AppController::setWorkspacePath(const QString &path) {
 }
 
 void AppController::attachFile(const QString &path) {
-    QFile file(path);
+    const QString clean = normalizeFilePath(path);
+    QFile file(clean);
     if (file.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        m_attachedFileName = QFileInfo(path).fileName();
+        m_attachedFileName = QFileInfo(clean).fileName();
         m_attachedFileContent = QString::fromUtf8(file.readAll());
         emit attachmentChanged();
     } else {
@@ -165,15 +182,17 @@ void AppController::sendMessage(const QString &text) {
 }
 
 void AppController::loadModel(const QString &alias, const QString &path) {
-    m_currentModel = alias + " (" + path + ")";
+    const QString clean = normalizeFilePath(path);
+    m_currentModel = alias + " (" + clean + ")";
     emit currentModelChanged();
     saveSettings();
 }
 
 void AppController::addModel(const QString &path, const QString &alias) {
-    if (path.isEmpty() || alias.isEmpty()) return;
+    const QString clean = normalizeFilePath(path);
+    if (clean.isEmpty() || alias.isEmpty()) return;
     QVariantMap modelData;
-    modelData["path"] = path;
+    modelData["path"] = clean;
     modelData["alias"] = alias;
     m_localModels.append(modelData);
     emit localModelsChanged();
@@ -209,7 +228,6 @@ bool AppController::connectMcpServer(const QString &name, const QString &command
     QString err;
     const bool ok = m_agentEngine->addMcpServer(cleanName, binary, parts, err);
     if (ok) {
-        // Evitar duplicados si se reconecta desde QSettings
         bool exists = false;
         for (const QVariant &v : m_mcpServers) {
             if (v.toMap()["name"].toString() == cleanName) {
@@ -265,7 +283,7 @@ void AppController::saveSettings() {
     for (const QVariant &item : m_localModels) {
         QVariantMap map = item.toMap();
         QJsonObject obj;
-        obj["path"] = map["path"].toString();
+        obj["path"] = normalizeFilePath(map["path"].toString());
         obj["alias"] = map["alias"].toString();
         modelsArray.append(obj);
     }
@@ -286,11 +304,11 @@ void AppController::loadSettings() {
     QSettings settings("FronterMind", "Harness");
 
     m_currentEngine = settings.value("engine", "llama.cpp").toString();
-    m_enginePath = settings.value("enginePath", "/usr/bin/llama-server").toString();
+    m_enginePath = normalizeFilePath(settings.value("enginePath", "/usr/bin/llama-server").toString());
     m_currentModel = settings.value("currentModel", "Ninguno").toString();
     m_maxContext = settings.value("maxContext", 4096).toInt();
 
-    const QString savedWorkspace = settings.value("workspacePath", "").toString();
+    const QString savedWorkspace = normalizeFilePath(settings.value("workspacePath", "").toString());
     if (!savedWorkspace.isEmpty()) {
         m_agentEngine->setWorkspaceDir(savedWorkspace);
     }
@@ -303,9 +321,16 @@ void AppController::loadSettings() {
             for (const QJsonValue &val : doc.array()) {
                 QJsonObject obj = val.toObject();
                 QVariantMap map;
-                map["path"] = obj["path"].toString();
-                map["alias"] = obj["alias"].toString();
+                const QString cleanModelPath = normalizeFilePath(obj["path"].toString());
+                const QString alias = obj["alias"].toString();
+                map["path"] = cleanModelPath;
+                map["alias"] = alias;
                 m_localModels.append(map);
+
+                // Si el modelo actual tenía guardada la ruta con "/C:/", actualizarlo también
+                if (m_currentModel.startsWith(alias + " (")) {
+                    m_currentModel = alias + " (" + cleanModelPath + ")";
+                }
             }
         }
     }
@@ -324,7 +349,6 @@ void AppController::loadSettings() {
                     map["name"] = name;
                     map["command"] = cmd;
                     m_mcpServers.append(map);
-                    // Reconectar automáticamente en segundo plano al iniciar
                     QTimer::singleShot(500, this, [this, name, cmd]() {
                         connectMcpServer(name, cmd);
                     });

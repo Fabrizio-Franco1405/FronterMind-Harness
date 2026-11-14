@@ -148,18 +148,12 @@ Rectangle {
             Layout.fillWidth: true
             Layout.topMargin: 4
             Text {
-                text: "v0.3.0 Alpha"
+                text: "v0.1.0 Alpha"
                 color: theme.textSecondary
                 font.family: theme.fontFamily
                 font.pixelSize: 11
             }
             Item { Layout.fillWidth: true }
-            Text {
-                text: "C++23 / Qt6"
-                color: theme.textSecondary
-                font.family: theme.monoFontFamily
-                font.pixelSize: 10
-            }
         }
     }
 }

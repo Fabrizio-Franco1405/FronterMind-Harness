@@ -196,7 +196,43 @@ Item {
                                     font.pixelSize: 13
                                     verticalAlignment: Text.AlignVCenter
                                 }
-                                background: Rectangle { color: theme.bgBase; border.color: theme.borderColor; radius: 6 }
+                                background: Rectangle {
+                                    color: theme.bgBase
+                                    border.color: engineCombo.hovered ? theme.accentColor : theme.borderColor
+                                    radius: 6
+                                }
+                                delegate: ItemDelegate {
+                                    width: engineCombo.width
+                                    height: 34
+                                    contentItem: Text {
+                                        leftPadding: 10
+                                        text: modelData
+                                        color: highlighted ? "#11111b" : theme.textPrimary
+                                        font.family: theme.fontFamily
+                                        font.pixelSize: 13
+                                        verticalAlignment: Text.AlignVCenter
+                                    }
+                                    background: Rectangle {
+                                        color: highlighted ? theme.accentColor : theme.bgSidebar
+                                    }
+                                    highlighted: engineCombo.highlightedIndex === index
+                                }
+                                popup: Popup {
+                                    y: engineCombo.height + 2
+                                    width: engineCombo.width
+                                    padding: 1
+                                    contentItem: ListView {
+                                        clip: true
+                                        implicitHeight: contentHeight
+                                        model: engineCombo.popup.visible ? engineCombo.delegateModel : null
+                                        currentIndex: engineCombo.highlightedIndex
+                                    }
+                                    background: Rectangle {
+                                        color: theme.bgSidebar
+                                        border.color: theme.borderColor
+                                        radius: 6
+                                    }
+                                }
                             }
 
                             Text {
@@ -211,6 +247,7 @@ Item {
                                 TextField {
                                     Layout.preferredWidth: 140
                                     Layout.preferredHeight: 36
+                                    leftPadding: 12
                                     text: backend.maxContext
                                     color: theme.textPrimary
                                     font.family: theme.monoFontFamily
@@ -258,6 +295,7 @@ Item {
                                 TextField {
                                     Layout.fillWidth: true
                                     Layout.preferredHeight: 36
+                                    leftPadding: 12
                                     text: backend.enginePath
                                     color: theme.textPrimary
                                     font.family: theme.monoFontFamily
@@ -266,6 +304,7 @@ Item {
                                     background: Rectangle { color: theme.bgBase; border.color: theme.borderColor; radius: 6 }
                                     onEditingFinished: backend.enginePath = text
                                     placeholderText: "/usr/bin/llama-server"
+                                    placeholderTextColor: "#6c7086"
                                 }
                                 Button {
                                     padding: 0
@@ -478,7 +517,6 @@ Item {
                         anchors.fill: parent
                         spacing: 0
 
-                        // Barra superior de la consola con botón Copiar Logs
                         Rectangle {
                             Layout.fillWidth: true
                             Layout.preferredHeight: 38
@@ -510,7 +548,6 @@ Item {
                                     Layout.fillWidth: true
                                 }
 
-                                // Botón Copiar Logs de la Consola
                                 Rectangle {
                                     Layout.preferredWidth: copyLogRow.implicitWidth + 18
                                     Layout.preferredHeight: 24
@@ -601,10 +638,29 @@ Item {
     // --- MODAL PARA AÑADIR MODELO Y ALIAS ---
     Dialog {
         id: addModelDialog
-        title: "Registrar Modelo GGUF"
         modal: true
         anchors.centerIn: Overlay.overlay
         width: 520
+        padding: 20
+
+        header: Rectangle {
+            color: theme.bgSidebar
+            height: 44
+            radius: 10
+            Rectangle { width: parent.width; height: 10; color: theme.bgSidebar; anchors.bottom: parent.bottom }
+            Rectangle { width: parent.width; height: 1; color: theme.borderColor; anchors.bottom: parent.bottom }
+            Text {
+                anchors.verticalCenter: parent.verticalCenter
+                anchors.left: parent.left
+                anchors.leftMargin: 20
+                text: "Registrar Modelo GGUF"
+                color: theme.textPrimary
+                font.family: theme.fontFamily
+                font.pixelSize: 15
+                font.bold: true
+            }
+        }
+
         background: Rectangle { color: theme.bgBase; radius: 10; border.color: theme.borderColor; border.width: 1 }
 
         ColumnLayout {
@@ -620,7 +676,9 @@ Item {
                     id: pathInput
                     Layout.fillWidth: true
                     Layout.preferredHeight: 36
-                    placeholderText: "/ruta/al/modelo.gguf"
+                    leftPadding: 12
+                    placeholderText: "Ruta al archivo .gguf"
+                    placeholderTextColor: "#6c7086"
                     color: theme.textPrimary
                     font.family: theme.monoFontFamily
                     font.pixelSize: 12
@@ -650,7 +708,9 @@ Item {
                 id: aliasInput
                 Layout.fillWidth: true
                 Layout.preferredHeight: 36
+                leftPadding: 12
                 placeholderText: "Ej. Qwen3-8B-Q4_K_M"
+                placeholderTextColor: "#6c7086"
                 color: theme.textPrimary
                 font.family: theme.fontFamily
                 font.pixelSize: 13
@@ -697,12 +757,18 @@ Item {
         id: fileDialog
         title: "Selecciona un modelo GGUF"
         nameFilters: ["Modelos GGUF (*.gguf)", "Todos los archivos (*)"]
-        onAccepted: pathInput.text = selectedFile.toString().replace("file:///", "/").replace("file://", "")
+        onAccepted: {
+            var p = selectedFile.toString().replace("file:///", "/").replace("file://", "")
+            if (p.length >= 3 && p[0] === "/" && p[2] === ":") {
+                p = p.substring(1)
+            }
+            pathInput.text = p
+        }
     }
 
     FileDialog {
         id: binaryDialog
         title: "Selecciona el binario de llama-server"
-        onAccepted: backend.enginePath = selectedFile.toString().replace("file:///", "/").replace("file://", "")
+        onAccepted: backend.enginePath = selectedFile.toString()
     }
 }
