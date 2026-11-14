@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=FronterMind Harness
+Comment=Local AI Agent Engine en C++23 y Qt6
+Exec=FronterMind
+Icon=frontermind
+Categories=Development;Utility;
+Terminal=false
