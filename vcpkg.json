@@ -2,15 +2,6 @@
   "name": "fronter-mind",
   "version": "0.1.0",
   "dependencies": [
-    {
-      "name": "qtbase",
-      "default-features": false,
-      "features": [
-        "gui",
-        "widgets"
-      ]
-    },
-    "qtdeclarative",
     "cmark-gfm"
   ]
 }

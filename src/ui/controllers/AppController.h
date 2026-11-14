@@ -22,6 +22,11 @@ class AppController : public QObject {
     Q_PROPERTY(QVariantList localModels READ localModels NOTIFY localModelsChanged)
     Q_PROPERTY(EngineManager* engineManager READ engineManager CONSTANT)
 
+    // Herramientas, MCP y Proyecto (Workspace)
+    Q_PROPERTY(QVariantList activeTools READ activeTools NOTIFY toolsChanged)
+    Q_PROPERTY(QVariantList savedMcpServers READ savedMcpServers NOTIFY mcpServersChanged)
+    Q_PROPERTY(QString workspacePath READ workspacePath WRITE setWorkspacePath NOTIFY workspacePathChanged)
+
     // Chat
     Q_PROPERTY(QStringList chatMessages READ chatMessages NOTIFY chatMessagesChanged)
     Q_PROPERTY(bool isGenerating READ isGenerating NOTIFY isGeneratingChanged)
@@ -30,7 +35,6 @@ class AppController : public QObject {
     // Tokens y Contexto
     Q_PROPERTY(int usedTokens READ usedTokens NOTIFY tokensChanged)
     Q_PROPERTY(int maxContext READ maxContext WRITE setMaxContext NOTIFY maxContextChanged)
-    Q_PROPERTY(QVariantList activeTools READ activeTools NOTIFY toolsChanged)
 
 public:
     explicit AppController(QObject *parent = nullptr);
@@ -53,21 +57,27 @@ public:
     bool isGenerating() const { return m_isGenerating; }
     EngineManager* engineManager() { return m_engineManager; }
 
+    QVariantList activeTools() const { return m_agentEngine->activeToolsMetadata(); }
+    QVariantList savedMcpServers() const { return m_mcpServers; }
+    QString workspacePath() const { return m_agentEngine->workspaceDir(); }
+
     int usedTokens() const { return m_usedTokens; }
     int maxContext() const { return m_maxContext; }
     void setMaxContext(int context);
 
     Q_INVOKABLE void sendMessage(const QString &text);
     Q_INVOKABLE void addModel(const QString &path, const QString &alias);
+    Q_INVOKABLE void removeModel(int index);
     Q_INVOKABLE void loadModel(const QString &alias, const QString &path);
+
+    Q_INVOKABLE void setWorkspacePath(const QString &path);
+    Q_INVOKABLE bool connectMcpServer(const QString &name, const QString &commandLine);
+    Q_INVOKABLE void removeMcpServer(int index);
 
     QString attachedFileName() const { return m_attachedFileName; }
     Q_INVOKABLE void attachFile(const QString &path);
     Q_INVOKABLE void clearAttachment();
     Q_INVOKABLE void clearChat();
-
-    QVariantList activeTools() const { return m_agentEngine->activeToolsMetadata(); }
-    Q_INVOKABLE bool connectMcpServer(const QString &name, const QString &commandLine);
 
 signals:
     void telemetryChanged();
@@ -81,11 +91,14 @@ signals:
     void maxContextChanged();
     void attachmentChanged();
     void toolsChanged();
+    void mcpServersChanged();
+    void workspacePathChanged();
 
 private:
     void startTelemetry();
     void loadSettings();
     void saveSettings();
+    void removeTemporaryStatusBubble();
 
     AgentEngine *m_agentEngine = nullptr;
     EngineManager *m_engineManager = nullptr;
@@ -102,6 +115,7 @@ private:
 
     QString m_currentModel = "Ninguno";
     QVariantList m_localModels;
+    QVariantList m_mcpServers;
     QStringList m_chatMessages;
     bool m_isGenerating = false;
 

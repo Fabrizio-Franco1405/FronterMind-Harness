@@ -6,17 +6,46 @@
 #include <QJsonObject>
 #include <QJsonArray>
 #include <QRegularExpression>
+#include <QDir>
 #include <QUrl>
-#include <QDebug>
 
 AgentEngine::AgentEngine(QObject *parent)
     : QObject(parent)
     , m_networkManager(new QNetworkAccessManager(this))
     , m_memory(4096)
+    , m_workspaceDir(QDir::currentPath())
 {
     registerFileSystemTools(m_toolRegistry);
     registerTerminalTools(m_toolRegistry);
     registerWebTools(m_toolRegistry);
+    updateSystemPromptWithWorkspace();
+}
+
+void AgentEngine::setWorkspaceDir(const QString &dirPath) {
+    QDir dir(dirPath);
+    if (!dir.exists()) return;
+    m_workspaceDir = dir.absolutePath();
+    QDir::setCurrent(m_workspaceDir);
+    updateSystemPromptWithWorkspace();
+}
+
+void AgentEngine::updateSystemPromptWithWorkspace() {
+    m_memory.setSystemPrompt(QStringLiteral(
+        "Eres FronterMind, un ingeniero de software e investigador autónomo ejecutándose localmente. "
+        "Directorio raíz del proyecto activo (Workspace): '%1'. "
+        "Cuando el usuario te pida inspeccionar, leer, crear o modificar archivos o ejecutar comandos, "
+        "utiliza tus herramientas (list_directory, read_file, write_file, edit_file, run_shell_command, web_search, http_fetch) "
+        "sobre ese directorio. Responde en Markdown estructurado y jamás utilices emojis.")
+        .arg(m_workspaceDir));
+}
+
+QString AgentEngine::summarizeToolArgs(const QString &toolName, const QString &argsJson) {
+    const QJsonObject obj = QJsonDocument::fromJson(argsJson.toUtf8()).object();
+    if (obj.contains("path"))    return obj["path"].toString();
+    if (obj.contains("command")) return obj["command"].toString();
+    if (obj.contains("query"))   return QStringLiteral("\"%1\"").arg(obj["query"].toString());
+    if (obj.contains("url"))     return obj["url"].toString();
+    return argsJson.simplified().left(80);
 }
 
 void AgentEngine::clearMemory() {
@@ -57,10 +86,7 @@ QString AgentEngine::stripThinkingBlocks(const QString &text) {
 
 void AgentEngine::sendMessage(const QString &modelName, const QString &text) {
     Q_UNUSED(modelName);
-
-    if (text.trimmed().isEmpty()) {
-        return;
-    }
+    if (text.trimmed().isEmpty()) return;
 
     emit startedGenerating();
     m_memory.addUserMessage(text);
@@ -134,7 +160,6 @@ void AgentEngine::performInferenceStep(int remainingSteps) {
         const QJsonObject message = choice["message"].toObject();
         QString content = message["content"].toString();
 
-        // 1. Verificar si el modelo solicitó ejecutar herramientas (Tool Calls)
         if (message.contains("tool_calls") && message["tool_calls"].isArray()) {
             const QJsonArray toolCallsJson = message["tool_calls"].toArray();
             if (!toolCallsJson.isEmpty()) {
@@ -159,8 +184,13 @@ void AgentEngine::performInferenceStep(int remainingSteps) {
                 m_memory.addAssistantMessage(stripThinkingBlocks(content), parsedCalls);
 
                 for (const ToolCallData &call : parsedCalls) {
-                    emit toolExecutionStarted(call.name);
+                    const QString targetSummary = summarizeToolArgs(call.name, call.argumentsJson);
                     const ToolResult res = m_toolRegistry.executeTool(call.name, call.argumentsJson);
+
+                    // Emitir evento transparente para que el usuario vea en el chat qué hizo el agente
+                    QString firstLinePreview = res.output.section('\n', 0, 0).trimmed().left(90);
+                    emit toolActionLogged(call.name, targetSummary, firstLinePreview, res.isError);
+
                     m_memory.addToolResultMessage(call.id, call.name, res.output);
                 }
 
@@ -169,7 +199,6 @@ void AgentEngine::performInferenceStep(int remainingSteps) {
             }
         }
 
-        // 2. Respuesta final al usuario
         if (content.isEmpty() && message.contains("reasoning_content")) {
             content = message["reasoning_content"].toString();
         }

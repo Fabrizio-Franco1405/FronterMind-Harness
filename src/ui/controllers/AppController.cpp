@@ -6,6 +6,7 @@
 #include <QJsonObject>
 #include <QFile>
 #include <QFileInfo>
+#include <QProcess>
 
 AppController::AppController(QObject *parent)
     : QObject(parent)
@@ -24,19 +25,26 @@ AppController::AppController(QObject *parent)
         emit chatMessagesChanged();
     });
 
-    connect(m_agentEngine, &AgentEngine::toolExecutionStarted, this, [this](const QString &toolName) {
-            if (!m_chatMessages.isEmpty() && m_chatMessages.last().startsWith("Agente: Pensando")) {
-                m_chatMessages.last() = "Agente: Pensando (ejecutando " + toolName + ")...";
-                emit chatMessagesChanged();
-            }
+    connect(m_agentEngine, &AgentEngine::toolActionLogged, this,
+            [this](const QString &toolName, const QString &targetSummary, const QString &resultPreview, bool isError) {
+        QString logEntry = QStringLiteral("Tool: %1 | %2 | %3")
+                               .arg(toolName, targetSummary, isError ? ("Error: " + resultPreview) : resultPreview);
+
+        if (!m_chatMessages.isEmpty() &&
+            (m_chatMessages.last().startsWith("Agente: Pensando") || m_chatMessages.last().startsWith("Agente: Analizando"))) {
+            int lastIdx = m_chatMessages.size() - 1;
+            m_chatMessages.insert(lastIdx, logEntry);
+            m_chatMessages.last() = "Agente: Analizando resultado de " + toolName + "...";
+        } else {
+            m_chatMessages.append(logEntry);
+        }
+        emit chatMessagesChanged();
     });
 
     connect(m_agentEngine, &AgentEngine::messageReceived, this, [this](const QString &response) {
         m_isGenerating = false;
         emit isGeneratingChanged();
-        if (!m_chatMessages.isEmpty() && m_chatMessages.last().startsWith("Agente: Pensando")) {
-            m_chatMessages.removeLast();
-        }
+        removeTemporaryStatusBubble();
         m_chatMessages.append("Agente: " + response);
         emit chatMessagesChanged();
     });
@@ -44,9 +52,7 @@ AppController::AppController(QObject *parent)
     connect(m_agentEngine, &AgentEngine::errorOccurred, this, [this](const QString &error) {
         m_isGenerating = false;
         emit isGeneratingChanged();
-        if (!m_chatMessages.isEmpty() && m_chatMessages.last().startsWith("Agente: Pensando")) {
-            m_chatMessages.removeLast();
-        }
+        removeTemporaryStatusBubble();
         m_chatMessages.append("Sistema: Error - " + error);
         emit chatMessagesChanged();
     });
@@ -55,11 +61,8 @@ AppController::AppController(QObject *parent)
         if (m_isGenerating) {
             m_isGenerating = false;
             emit isGeneratingChanged();
-            if (!m_chatMessages.isEmpty() && m_chatMessages.last().startsWith("Agente: Pensando")) {
-                m_chatMessages.removeLast();
-                m_chatMessages.append("Sistema: Generación terminada sin respuesta.");
-                emit chatMessagesChanged();
-            }
+            removeTemporaryStatusBubble();
+            emit chatMessagesChanged();
         }
     });
 
@@ -76,6 +79,15 @@ AppController::AppController(QObject *parent)
 AppController::~AppController() {
     delete m_systemMonitor;
     m_systemMonitor = nullptr;
+}
+
+void AppController::removeTemporaryStatusBubble() {
+    if (!m_chatMessages.isEmpty()) {
+        const QString &lastMsg = m_chatMessages.last();
+        if (lastMsg.startsWith("Agente: Pensando") || lastMsg.startsWith("Agente: Analizando")) {
+            m_chatMessages.removeLast();
+        }
+    }
 }
 
 void AppController::setCurrentEngine(const QString &engine) {
@@ -97,6 +109,16 @@ void AppController::setMaxContext(int context) {
     m_maxContext = context;
     m_agentEngine->setMaxContextTokens(context);
     emit maxContextChanged();
+    saveSettings();
+}
+
+void AppController::setWorkspacePath(const QString &path) {
+    QString cleanPath = path;
+    cleanPath.replace("file://", "");
+    if (cleanPath.isEmpty() || cleanPath == m_agentEngine->workspaceDir()) return;
+
+    m_agentEngine->setWorkspaceDir(cleanPath);
+    emit workspacePathChanged();
     saveSettings();
 }
 
@@ -145,8 +167,6 @@ void AppController::sendMessage(const QString &text) {
 void AppController::loadModel(const QString &alias, const QString &path) {
     m_currentModel = alias + " (" + path + ")";
     emit currentModelChanged();
-    m_chatMessages.append("Sistema: Modelo " + alias + " seleccionado.");
-    emit chatMessagesChanged();
     saveSettings();
 }
 
@@ -157,6 +177,66 @@ void AppController::addModel(const QString &path, const QString &alias) {
     modelData["alias"] = alias;
     m_localModels.append(modelData);
     emit localModelsChanged();
+    saveSettings();
+}
+
+void AppController::removeModel(int index) {
+    if (index < 0 || index >= m_localModels.size()) return;
+    QVariantMap removed = m_localModels.at(index).toMap();
+    m_localModels.removeAt(index);
+
+    if (m_currentModel.startsWith(removed["alias"].toString() + " (")) {
+        if (!m_localModels.isEmpty()) {
+            QVariantMap first = m_localModels.first().toMap();
+            m_currentModel = first["alias"].toString() + " (" + first["path"].toString() + ")";
+        } else {
+            m_currentModel = "Ninguno";
+        }
+        emit currentModelChanged();
+    }
+
+    emit localModelsChanged();
+    saveSettings();
+}
+
+bool AppController::connectMcpServer(const QString &name, const QString &commandLine) {
+    const QString cleanName = name.trimmed();
+    const QString cleanCmd  = commandLine.trimmed();
+    QStringList parts = QProcess::splitCommand(cleanCmd);
+    if (cleanName.isEmpty() || parts.isEmpty()) return false;
+
+    const QString binary = parts.takeFirst();
+    QString err;
+    const bool ok = m_agentEngine->addMcpServer(cleanName, binary, parts, err);
+    if (ok) {
+        // Evitar duplicados si se reconecta desde QSettings
+        bool exists = false;
+        for (const QVariant &v : m_mcpServers) {
+            if (v.toMap()["name"].toString() == cleanName) {
+                exists = true;
+                break;
+            }
+        }
+        if (!exists) {
+            QVariantMap mcpMap;
+            mcpMap["name"] = cleanName;
+            mcpMap["command"] = cleanCmd;
+            m_mcpServers.append(mcpMap);
+            emit mcpServersChanged();
+            saveSettings();
+        }
+        emit toolsChanged();
+    } else {
+        m_chatMessages.append("Sistema: Error al conectar MCP '" + cleanName + "' -> " + err);
+        emit chatMessagesChanged();
+    }
+    return ok;
+}
+
+void AppController::removeMcpServer(int index) {
+    if (index < 0 || index >= m_mcpServers.size()) return;
+    m_mcpServers.removeAt(index);
+    emit mcpServersChanged();
     saveSettings();
 }
 
@@ -179,6 +259,7 @@ void AppController::saveSettings() {
     settings.setValue("enginePath", m_enginePath);
     settings.setValue("currentModel", m_currentModel);
     settings.setValue("maxContext", m_maxContext);
+    settings.setValue("workspacePath", m_agentEngine->workspaceDir());
 
     QJsonArray modelsArray;
     for (const QVariant &item : m_localModels) {
@@ -189,6 +270,16 @@ void AppController::saveSettings() {
         modelsArray.append(obj);
     }
     settings.setValue("models", QJsonDocument(modelsArray).toJson(QJsonDocument::Compact));
+
+    QJsonArray mcpArray;
+    for (const QVariant &item : m_mcpServers) {
+        QVariantMap map = item.toMap();
+        QJsonObject obj;
+        obj["name"] = map["name"].toString();
+        obj["command"] = map["command"].toString();
+        mcpArray.append(obj);
+    }
+    settings.setValue("mcpServers", QJsonDocument(mcpArray).toJson(QJsonDocument::Compact));
 }
 
 void AppController::loadSettings() {
@@ -199,13 +290,17 @@ void AppController::loadSettings() {
     m_currentModel = settings.value("currentModel", "Ninguno").toString();
     m_maxContext = settings.value("maxContext", 4096).toInt();
 
-    QString modelsJson = settings.value("models", "").toString();
+    const QString savedWorkspace = settings.value("workspacePath", "").toString();
+    if (!savedWorkspace.isEmpty()) {
+        m_agentEngine->setWorkspaceDir(savedWorkspace);
+    }
+
+    const QString modelsJson = settings.value("models", "").toString();
     if (!modelsJson.isEmpty()) {
         QJsonDocument doc = QJsonDocument::fromJson(modelsJson.toUtf8());
         if (doc.isArray()) {
             m_localModels.clear();
-            QJsonArray arr = doc.array();
-            for (const QJsonValue &val : arr) {
+            for (const QJsonValue &val : doc.array()) {
                 QJsonObject obj = val.toObject();
                 QVariantMap map;
                 map["path"] = obj["path"].toString();
@@ -215,11 +310,36 @@ void AppController::loadSettings() {
         }
     }
 
+    const QString mcpJson = settings.value("mcpServers", "").toString();
+    if (!mcpJson.isEmpty()) {
+        QJsonDocument doc = QJsonDocument::fromJson(mcpJson.toUtf8());
+        if (doc.isArray()) {
+            m_mcpServers.clear();
+            for (const QJsonValue &val : doc.array()) {
+                QJsonObject obj = val.toObject();
+                const QString name = obj["name"].toString();
+                const QString cmd  = obj["command"].toString();
+                if (!name.isEmpty() && !cmd.isEmpty()) {
+                    QVariantMap map;
+                    map["name"] = name;
+                    map["command"] = cmd;
+                    m_mcpServers.append(map);
+                    // Reconectar automáticamente en segundo plano al iniciar
+                    QTimer::singleShot(500, this, [this, name, cmd]() {
+                        connectMcpServer(name, cmd);
+                    });
+                }
+            }
+        }
+    }
+
     emit currentEngineChanged();
     emit enginePathChanged();
     emit currentModelChanged();
     emit localModelsChanged();
     emit maxContextChanged();
+    emit mcpServersChanged();
+    emit workspacePathChanged();
 }
 
 void AppController::clearChat() {
@@ -228,20 +348,4 @@ void AppController::clearChat() {
     m_usedTokens = 0;
     emit chatMessagesChanged();
     emit tokensChanged();
-}
-
-bool AppController::connectMcpServer(const QString &name, const QString &commandLine) {
-    QStringList parts = QProcess::splitCommand(commandLine.trimmed());
-    if (parts.isEmpty()) return false;
-    QString cmd = parts.takeFirst();
-    QString err;
-    bool ok = m_agentEngine->addMcpServer(name, cmd, parts, err);
-    if (ok) {
-        m_chatMessages.append("Sistema: Servidor MCP '" + name + "' conectado correctamente.");
-        emit toolsChanged();
-    } else {
-        m_chatMessages.append("Sistema: Error al conectar MCP '" + name + "' -> " + err);
-    }
-    emit chatMessagesChanged();
-    return ok;
 }

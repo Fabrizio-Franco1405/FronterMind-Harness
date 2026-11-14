@@ -1,11 +1,18 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
+import QtQuick.Dialogs
 import "../components"
 import FronterMind.Components.MarkdownViewer
 
 Item {
     id: root
+
+    FolderDialog {
+        id: workspaceDialog
+        title: "Seleccionar carpeta del proyecto (Workspace)"
+        onAccepted: backend.setWorkspacePath(selectedFolder.toString())
+    }
 
     ColumnLayout {
         anchors.fill: parent
@@ -23,7 +30,7 @@ Item {
                 anchors.fill: parent
                 anchors.leftMargin: 30
                 anchors.rightMargin: 30
-                spacing: 18
+                spacing: 16
 
                 ColumnLayout {
                     spacing: 4
@@ -36,7 +43,7 @@ Item {
                     }
 
                     RowLayout {
-                        spacing: 8
+                        spacing: 10
                         Icon { iconName: "database"; iconColor: theme.accentColor; iconSize: 11 }
                         Text {
                             text: backend.usedTokens + " / " + backend.maxContext + " tokens"
@@ -45,7 +52,7 @@ Item {
                             font.pixelSize: 11
                         }
                         Rectangle {
-                            width: 70; height: 5; radius: 3
+                            width: 60; height: 5; radius: 3
                             color: theme.bgSurface
                             Rectangle {
                                 width: Math.min(parent.width, (backend.usedTokens / Math.max(1, backend.maxContext)) * parent.width)
@@ -58,13 +65,49 @@ Item {
                     }
                 }
 
+                // --- SELECTOR DE CARPETA DE PROYECTO (WORKSPACE) ---
+                Rectangle {
+                    Layout.preferredHeight: 34
+                    Layout.preferredWidth: Math.min(320, wsRow.implicitWidth + 24)
+                    radius: 8
+                    color: wsMouse.containsMouse ? theme.bgSurface : theme.bgSidebar
+                    border.color: wsMouse.containsMouse ? theme.accentColor : theme.borderColor
+                    border.width: 1
+
+                    RowLayout {
+                        id: wsRow
+                        anchors.fill: parent
+                        anchors.leftMargin: 12
+                        anchors.rightMargin: 12
+                        spacing: 8
+
+                        Icon { iconName: "folder-open"; iconColor: theme.accentColor; iconSize: 14 }
+                        Text {
+                            text: backend.workspacePath
+                            color: theme.textPrimary
+                            font.family: theme.monoFontFamily
+                            font.pixelSize: 11
+                            elide: Text.ElideLeft
+                            Layout.fillWidth: true
+                        }
+                    }
+
+                    MouseArea {
+                        id: wsMouse
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: workspaceDialog.open()
+                    }
+                }
+
                 Item { Layout.fillWidth: true }
 
                 Text { text: "Modelo:"; color: theme.textSecondary; font.family: theme.fontFamily; font.pixelSize: 13 }
 
                 ComboBox {
                     id: modelSelector
-                    Layout.preferredWidth: 250
+                    Layout.preferredWidth: 220
                     Layout.preferredHeight: 36
                     model: backend.localModels
                     textRole: "alias"
@@ -86,11 +129,9 @@ Item {
                         color: theme.bgSidebar
                         border.color: modelSelector.hovered ? theme.accentColor : theme.borderColor
                         radius: 8
-                        Behavior on border.color { ColorAnimation { duration: 100 } }
                     }
                 }
 
-                // Botón Limpiar Sesión
                 Rectangle {
                     Layout.preferredWidth: 36
                     Layout.preferredHeight: 36
@@ -98,7 +139,6 @@ Item {
                     color: clearMouse.containsMouse ? theme.bgSurface : theme.bgSidebar
                     border.color: clearMouse.containsMouse ? "#f38ba8" : theme.borderColor
                     border.width: 1
-                    Behavior on color { ColorAnimation { duration: 100 } }
 
                     Icon {
                         anchors.centerIn: parent
@@ -153,10 +193,10 @@ Item {
                 }
 
                 Text {
-                    text: "Tu agente local con herramientas de archivos, terminal, internet y MCP está listo."
+                    text: "Proyecto activo: " + backend.workspacePath
                     color: theme.textSecondary
-                    font.family: theme.fontFamily
-                    font.pixelSize: 13
+                    font.family: theme.monoFontFamily
+                    font.pixelSize: 12
                     Layout.alignment: Qt.AlignHCenter
                 }
             }
@@ -165,7 +205,7 @@ Item {
                 id: messageList
                 anchors.fill: parent
                 clip: true
-                spacing: 22
+                spacing: 16
                 cacheBuffer: 2000
                 model: backend.chatMessages
                 visible: backend.chatMessages.length > 0
@@ -182,12 +222,14 @@ Item {
                     height: bubble.height
 
                     property bool isUser: modelData.startsWith("Tú:")
-                    property bool isThinking: modelData === "Agente: Pensando..." || modelData.startsWith("Agente: Pensando")
+                    property bool isTool: modelData.startsWith("Tool:")
+                    property bool isThinking: modelData.startsWith("Agente: Pensando") || modelData.startsWith("Agente: Analizando")
                     property bool isSystem: modelData.startsWith("Sistema:")
-                    property bool isMarkdown: !isUser && !isSystem && !isThinking
+                    property bool isMarkdown: !isUser && !isSystem && !isThinking && !isTool
 
                     Rectangle {
                         id: avatar
+                        visible: !isTool
                         width: 34; height: 34; radius: 10
                         color: isUser ? theme.userBubbleColor : theme.bgSidebar
                         border.color: isUser ? "transparent" : theme.accentColor
@@ -208,37 +250,37 @@ Item {
                         id: bubble
                         readonly property real maxBubbleWidth: parent.width * 0.85
 
-                        width: (isSystem || isThinking)
-                               ? statusRow.implicitWidth + 32
+                        width: (isSystem || isThinking || isTool)
+                               ? Math.min(maxBubbleWidth, statusRow.implicitWidth + 32)
                                : (isUser
                                   ? Math.min(parent.width * 0.78, userText.implicitWidth + 28)
                                   : Math.min(maxBubbleWidth, markdownView.implicitWidth + 28))
-                        height: (isSystem || isThinking)
-                                ? Math.max(40, statusText.implicitHeight + 24)
+                        height: (isSystem || isThinking || isTool)
+                                ? Math.max(36, statusText.implicitHeight + 18)
                                 : (isUser ? userText.implicitHeight + 24 : markdownView.implicitHeight + 28)
-                        radius: 12
+                        radius: isTool ? 8 : 12
 
                         anchors.top: parent.top
-                        anchors.left: isUser ? undefined : avatar.right
+                        anchors.left: isUser ? undefined : (isTool ? parent.left : avatar.right)
                         anchors.right: isUser ? avatar.left : undefined
-                        anchors.leftMargin: isUser ? 0 : 14
+                        anchors.leftMargin: isUser ? 0 : (isTool ? 48 : 14)
                         anchors.rightMargin: isUser ? 14 : 0
 
-                        color: isUser ? theme.userBubbleColor : (isThinking ? theme.bgSidebar : theme.bgSurface)
-                        border.color: isUser ? theme.userBubbleColor : (isSystem ? "#f38ba8" : theme.borderColor)
+                        color: isUser ? theme.userBubbleColor : (isTool ? theme.bgDarkest : (isThinking ? theme.bgSidebar : theme.bgSurface))
+                        border.color: isUser ? theme.userBubbleColor : (isSystem ? "#f38ba8" : (isTool ? theme.accentColor : theme.borderColor))
                         border.width: isUser ? 0 : 1
 
                         RowLayout {
                             id: statusRow
-                            visible: isSystem || isThinking
-                            x: 16
+                            visible: isSystem || isThinking || isTool
+                            x: 14
                             anchors.verticalCenter: parent.verticalCenter
-                            width: Math.min(bubble.parent.width * 0.75, statusText.implicitWidth + 26)
+                            width: Math.min(bubble.maxBubbleWidth - 28, statusText.implicitWidth + 28)
                             spacing: 8
 
                             Icon {
-                                iconName: isThinking ? "hourglass" : "warning"
-                                iconColor: isThinking ? theme.accentColor : "#f38ba8"
+                                iconName: isTool ? "code" : (isThinking ? "hourglass" : "warning")
+                                iconColor: isTool ? "#a6e3a1" : (isThinking ? theme.accentColor : "#f38ba8")
                                 iconSize: 14
                                 Layout.alignment: Qt.AlignVCenter
                             }
@@ -246,11 +288,11 @@ Item {
                             Text {
                                 id: statusText
                                 Layout.fillWidth: true
-                                text: modelData.replace("Sistema: ", "").replace("Agente: ", "")
-                                color: isThinking ? theme.textSecondary : "#f38ba8"
-                                font.family: theme.fontFamily
+                                text: modelData.replace("Sistema: ", "").replace("Agente: ", "").replace("Tool: ", "")
+                                color: isTool ? "#a6e3a1" : (isThinking ? theme.textSecondary : "#f38ba8")
+                                font.family: isTool ? theme.monoFontFamily : theme.fontFamily
                                 font.italic: isThinking
-                                font.pixelSize: 13
+                                font.pixelSize: isTool ? 12 : 13
                                 wrapMode: Text.Wrap
                             }
                         }
