@@ -1,0 +1,7 @@
+<RCC>
+    <qresource prefix="/assets">
+        <file alias="logo.svg">icons/frontermind-icon_negative@256x256.svg</file>
+        <file alias="logo.png">icons/frontermind-icon_negative@256x256.png</file>
+        <file alias="logo.ico">icons/frontermind-icon_negative@256x256.ico</file>
+    </qresource>
+</RCC>

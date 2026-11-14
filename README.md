@@ -1,467 +1,174 @@
 <div align="center">
-  <br>
-  <h1>⚙️ C++23 Modules Template</h1>
-  <p><strong>Plantilla moderna y minimalista para crear proyectos en C++ utilizando Módulos C++23 con CMake, Ninja y Clang.</strong></p>
-  <p>
-    <img src="https://img.shields.io/badge/C%2B%2B-23-00599C?style=flat&logo=c%2B%2B" alt="C++23">
-    <img src="https://img.shields.io/badge/CMake-4.4+-064F8C?style=flat&logo=cmake" alt="CMake 4.4+">
-    <img src="https://img.shields.io/badge/Clang-19+-5C4EE5?style=flat&logo=llvm" alt="Clang 19+">
-    <img src="https://img.shields.io/badge/Ninja-1.12+-63E6BE?style=flat" alt="Ninja 1.12+">
-    <img src="https://img.shields.io/badge/license-MIT-blue?style=flat" alt="License MIT">
-  </p>
-  <br>
+
+<img src="assets/icons/frontermind-icon_negative@256x256.svg" alt="FronterMind Logo" width="110" height="110" />
+
+# FronterMind Harness
+
+**El Entorno de Ejecución (Harness) Nativo, Ultrarrápido y Modular para Agentes de IA Locales**
+
+[![C++23](https://img.shields.io/badge/Standard-C%2B%2B23-00599C?style=for-the-badge&logo=c%2B%2B)](https://en.cppreference.com/w/cpp/23)
+[![Qt 6](https://img.shields.io/badge/GUI-Qt6%20%2F%20QML-41CD52?style=for-the-badge&logo=qt)](https://www.qt.io/)
+[![MCP Ready](https://img.shields.io/badge/Protocol-MCP%20JSON--RPC%202.0-cba6f7?style=for-the-badge)](https://modelcontextprotocol.io/)
+[![Platform](https://img.shields.io/badge/Platform-Linux%20%7C%20Windows-89b4fa?style=for-the-badge)](#compilaci%C3%B3n-e-instalaci%C3%B3n)
+[![License](https://img.shields.io/badge/License-MIT-a6e3a1?style=for-the-badge)](LICENSE)
+
+*Cero Electron. Cero telemetría en la nube. Latencia cero en C++23 nativo.*
+
+[Características](#-caracter%C3%ADsticas-principales) •
+[Arquitectura](#-arquitectura-del-sistema) •
+[Herramientas & MCP](#-herramientas-nativas-y-ecosistema-mcp) •
+[Compilación](#-compilaci%C3%B3n-e-instalaci%C3%B3n) •
+[Documentación](docs/)
+
 </div>
 
 ---
 
-## Indice
+## ¿Por qué FronterMind Harness?
 
-- [Descripcion](#descripcion)
-- [Requisitos del sistema](#requisitos-del-sistema)
-- [Estructura del proyecto](#estructura-del-proyecto)
-- [Guia de instalacion](#guia-de-instalacion)
-  - [1. Instalar Clang con soporte de módulos](#1-instalar-clang-con-soporte-de-m%C3%B3dulos)
-  - [2. Instalar CMake](#2-instalar-cmake)
-  - [3. Instalar Ninja](#3-instalar-ninja)
-  - [4. Clonar el repositorio](#4-clonar-el-repositorio)
-  - [5. Generar el proyecto](#5-generar-el-proyecto)
-  - [6. Compilar y ejecutar](#6-compilar-y-ejecutar)
-  - [Compilación automática en tu editor](#compilaci%C3%B3n-autom%C3%A1tica-en-tu-editor)
-- [Personalizacion](#personalizacion)
-- [Solucion de problemas](#solucion-de-problemas)
-- [Licencia](#licencia)
+La mayoría de las interfaces actuales para modelos de lenguaje locales son simples clientes de chat construidos sobre Electron o wrappers web pesados que consumen más de **1.5 GB de RAM** antes siquiera de cargar un modelo. Además, carecen de un motor agéntico real que permita al modelo interactuar con el sistema operativo y tus proyectos de forma transparente.
+
+**FronterMind Harness** nace con una filosofía de ingeniería radicalmente distinta:
+1. **Rendimiento Bare-Metal:** Escrito desde cero en **C++23** con renderizado acelerado por hardware en **Qt6 / QML**. Arranca en milisegundos y mantiene una huella de memoria de apenas **~180 MB de RAM**, liberando el 100% de tu VRAM y memoria del sistema para la inferencia del LLM.
+
+2. **Verdadera Capacidad Agéntica (ReAct):** No solo conversa; **actúa**. Transforma cualquier modelo local compatible con *Tool Calling* (como **Qwen 3**, **Llama 3.1/3.3**, **DeepSeek**, **Mistral**) en un ingeniero de software autónomo capaz de explorar repositorios, leer y editar código fuente, ejecutar compilaciones en terminal y buscar documentación actualizada en internet.
+
+3. **Transparencia Total de Acciones (*Action Traceability*):** A diferencia de las cajas negras, cada herramienta invocada por el agente genera una traza visual en tiempo real dentro del flujo de trabajo, mostrando exactamente qué directorio inspecciona, qué archivo modifica o qué comando ejecuta.
 
 ---
 
-## Descripcion
+## Características Principales
 
-Esta plantilla te permite **empezar a programar con módulos de C++23 en cuestion de segundos** sin perder tiempo configurando flags de compilación ni experimentando con variables de CMake. Incluye:
+### Orquestador Agéntico ReAct con Memoria Contextual
+* **Ciclo Autónomo Multi-Paso:** El motor (`AgentEngine`) evalúa las solicitudes del modelo, ejecuta herramientas locales o remotas, inyecta los resultados de vuelta en el contexto y continúa razonando hasta resolver la tarea.
 
-- **`import std;`** — importa la biblioteca estándar completa como un solo módulo.
-- **CMake 4.4+** con la variable experimental `CMAKE_EXPERIMENTAL_CXX_IMPORT_STD` habilitada.
-- **Clang 19+** con `-stdlib=libc++` para soporte completo de módulos C++23.
-- **Ninja** como generador del _build system_ (rápido y eficiente).
-- **`compile_commands.json`** exportado automáticamente (ideal para _LSPs_ como clangd, zed, vscode, etc).
-- **Compilación con C++23** — usa todas las características modernas del estándar.
-- **Licencia MIT** (ver `LICENSE`).
+* **Ventana Deslizante Inteligente (*Sliding Window*):** Control estricto del presupuesto de contexto (`4K`, `8K`, `16K`, `32K+` tokens) con poda automática de turnos antiguos preservando siempre el *System Prompt* y la coherencia de las llamadas a herramientas.
 
-Todo está integrado y funcionando: compilas y ejecutas `Hola desde C++23 con módulos!`.
+* **Optimización para Modelos Razonadores (`<think>` stripping):** Filtra automáticamente los bloques de pensamiento interno del historial de memoria tras cada turno, reduciendo el consumo de ventana de contexto hasta en un **70%** en sesiones extensas.
 
----
+### Gestión de Procesos e Inferencia Local
+* **Controlador de Ciclo de Vida (`EngineManager`):** Inicia, supervisa y detiene instancias locales de `llama-server` (`llama.cpp`) con soporte automático para plantillas `--jinja`, aceleración por GPU (`-ngl`) y parada limpia en dos fases (`SIGTERM` con *graceful timeout* hacia `SIGKILL` y protección contra procesos huérfanos en Linux mediante `PR_SET_PDEATHSIG`).
 
-## Requisitos del sistema
+* **Consola de Telemetría en Tiempo Real:** Visualización en vivo de `stdout` y `stderr` del motor de inferencia con copiado rápido para diagnóstico inmediato.
 
-| Herramienta               | Version minima  | Descripcion                                              |
-| ------------------------- | --------------- | -------------------------------------------------------- |
-| **Linux / macOS**         | —               | Sistema operativo soportado                              |
-| **Clang**                 | 19+             | Compilador con soporte de módulos C++23                  |
-| **libc++**                | 19+             | Biblioteca estándar compatible con módulos               |
-| **CMake**                 | 4.4.2           | Generador del _build system_                             |
-| **Ninja**                 | 1.12+           | Generador de compilación rápido                          |
-| **Git**                   | 2.30+           | Control de versiones y clonado del repositorio           |
+### Telemetría de Hardware de Bajo Nivel
+* **Monitoreo Nativo sin Dependencias Externas:** Lectura directa del kernel para mostrar el uso de **CPU**, **RAM del sistema**, **Memoria del proceso** y **VRAM**.
+* **Autodetección Inteligente de GPU Dedicada (dGPU vs iGPU):** Prioriza automáticamente tarjetas gráficas dedicadas sobre gráficos integrados tanto en **Linux** (vía `/sys/class/drm` y `mem_info_vram_total`) como en **Windows** (vía API nativa `DXGI 1.4` / `IDXGIAdapter3`).
 
-> **Nota:** En macOS puedes instalar Clang via `xcode-select --install` o con Homebrew (`brew install llvm`). En Windows, usa WSL2 o instala LLVM directamente desde [llvm.org](https://llvm.org/). No olvides sustituir el ""f35a9ac6-8463-4d38-8eec-5d6008153e7d" por el correspondiente en tu versión de CMake.
+### Motor de Renderizado Markdown & UI Personalizable
+* **Parser AST Nativo (`libcmark-gfm`):** Renderizado instantáneo de tablas, listas y bloques de código con resaltado de sintaxis en C++ y copiado en un clic.
+* **Motor de Temas Reactivo (`ThemeManager`):** Incluye 5 paletas diseñadas para largas jornadas de programación (*Catppuccin Mocha*, *Tokyo Night*, *Rose Pine*, *Gruvbox Dark* y *Nord Polar*), editor hexadecimal por propiedad y selector de fuentes tipográficas de interfaz y código en tiempo real.
 
 ---
 
-## Estructura del proyecto
+## Herramientas Nativas y Ecosistema MCP
 
-```
-CPP23_Modules_Template/
-├── CMakeLists.txt          # Configuracion del build con CMake
-├── main.cpp                # Punto de entrada con import std;
-├── build/                  # Directorio de salida de la compilacion (ignorado)
-│   ├── CPP23_Modules_Template            # Ejecutable compilado
-│   ├── compile_commands.json
-│   └── ...
-└── README.md               # Este archivo
-```
+FronterMind incorpora **7 herramientas nativas compiladas en C++** listas para funcionar sin instalar runtimes externos, además de un **Cliente MCP (Model Context Protocol)** completo:
 
-### Descripcion de archivos clave
-
-| Archivo           | Proposito                                                              |
-| ----------------- | ---------------------------------------------------------------------- |
-| `CMakeLists.txt`  | Declara el proyecto, configura Clang, activa módulos C++23 y enlaza.   |
-| `main.cpp`        | Contiene el código fuente con `import std;` y la función `main()`.    |
-| `build/`          | Contiene los artefactos de compilación (ejecutable, objetos, etc).    |
+| Herramienta | Tipo | Descripción |
+| :--- | :---: | :--- |
+| `list_directory` | `Nativa C++` | Inspecciona cualquier directorio del *Workspace* activo detallando subcarpetas y tamaños de archivos. |
+| `read_file` | `Nativa C++` | Lee código fuente o archivos de texto con numeración de líneas y soporte de rangos (`start_line` / `end_line`). |
+| `write_file` | `Nativa C++` | Crea archivos nuevos o sobrescribe existentes generando automáticamente la estructura de directorios padre. |
+| `edit_file` | `Nativa C++` | Realiza reemplazos quirúrgicos de bloques de código (`search_text` -> `replace_text`) sin reescribir todo el archivo. |
+| `run_shell_command` | `Nativa C++` | Ejecuta comandos del sistema (`cmake`, `git`, `ninja`, tests) con captura de `stdout`/`stderr`, código de salida y *timeout* de seguridad de 30s. |
+| `web_search` | `Nativa C++` | Consulta motores de búsqueda en tiempo real devolviendo títulos, URLs limpias y resúmenes actualizados sin requerir API Keys de pago. |
+| `http_fetch` | `Nativa C++` | Descarga páginas web o endpoints JSON y limpia el DOM HTML para entregar texto puro optimizado en tokens. |
+| **Puente MCP** | `JSON-RPC 2.0` | Conecta cualquier servidor **Model Context Protocol** externo vía `stdio` (`npx`, `uvx`, binarios locales), descubre sus herramientas con `tools/list` y las expone automáticamente al LLM. |
 
 ---
 
-## Guia de instalacion
+## Arquitectura del Sistema
 
-### 1. Instalar Clang con soporte de módulos
+El proyecto está diseñado bajo una separación estricta de responsabilidades donde el **Core (`src/core`) es 100% independiente de la interfaz gráfica (`src/ui`)**, permitiendo máxima escalabilidad y mantenibilidad:
 
-#### Linux (Arch / Manjaro)
-
-```bash
-sudo pacman -S clang libc++
+```text
+FronterMind-Harness/
+├── assets/
+│   ├── icons/                # Iconos oficiales multiplataforma (.svg, .png, .ico, .rc)
+│   └── resources.qrc         # Recursos gráficos compilados en el binario
+├── docs/                     # Manuales técnicos de arquitectura, compilación y releases
+└── src/
+    ├── platform/             # Abstracción de hardware por SO (Linux /proc & DRM | Windows Win32 & DXGI)
+    ├── core/                 # Backend puro (C++23, QtCore, QtNetwork) — Cero dependencias de UI
+    │   ├── agent/            # AgentEngine: Orquestador ReAct y cliente HTTP OpenAI-compatible
+    │   ├── context/          # ConversationMemory & ChatMessage: Ventana deslizante y estimador BPE
+    │   ├── llm/              # EngineManager: Supervisión de subprocesos llama-server
+    │   ├── tools/            # ITool, ToolRegistry, FileSystemTools, TerminalTool y WebTools
+    │   └── mcp/              # McpClient & McpBridgeTool: Cliente JSON-RPC 2.0 sobre stdio
+    ├── libs/
+    │   └── MarkdownViewer/   # Módulo estático C++/QML con libcmark-gfm y Syntax Highlighter
+    ├── ui/                   # Frontend QtQuick / QML y Controladores puente (AppController, ThemeManager)
+    │   ├── controllers/      # Puentes Q_PROPERTY / Q_INVOKABLE e IconImageProvider (Qlementine)
+    │   └── qml/              # Vistas modulares (ChatView, SettingsView, ToolsMcpView, AppearanceView)
+    └── app/                  # Punto de entrada de la aplicación (main.cpp)
 ```
 
-#### Linux (Ubuntu / Debian)
+## Compilación e Instalación
 
-```bash
-sudo apt update
-sudo apt install clang libc++-dev libc++abi-dev lld
+### Requisitos Previos
+
+  - **Compilador C++23:** `Clang 17+` o `GCC 13+` en Linux | `MSVC 2022` o `Clang-cl` en Windows.
+
+  - **Sistema de Construcción:** `CMake 3.28+` y `Ninja`.
+
+  - **Framework:** `Qt 6.5+` (Módulos: `Quick`, `Qml`, `QuickDialogs2`, `Svg`, `Network`).
+
+  - **Librería Markdown:** `cmark-gfm` (`libcmark-gfm` en Linux o vía `vcpkg` en Windows).
+
+1. Compilación en Linux (Arch / CachyOS / Ubuntu / Fedora)
+
+```Bash
+# 1. Clonar el repositorio
+git clone [https://github.com/tu-usuario/FronterMind-Harness.git](https://github.com/tu-usuario/FronterMind-Harness.git)
+cd FronterMind-Harness
+
+# 2. Configurar y compilar en modo Release (Optimizado)
+cmake --preset linux-release
+cmake --build --preset linux-release
+
+# 3. Ejecutar
+./build-release/src/app/FronterMind
 ```
 
-#### macOS (Homebrew)
+### Generar paquetes instalables `.deb` y `.tar.gz` en Linux:
 
-```bash
-brew install llvm
+```Bash
+cd build-release && cpack
 ```
 
-> En macOS, después de instalar con Homebrew, necesitás agregar las rutas al `PATH`:
-> ```bash
-> export PATH="/opt/homebrew/opt/llvm/bin:$PATH"
-> export LDFLAGS="-L/opt/homebrew/opt/llvm/lib"
-> export CPPFLAGS="-I/opt/homebrew/opt/llvm/include"
-> ```
+2. Compilación en Windows (10 / 11)
 
-#### Windows (WSL2)
+En Windows, el proyecto utiliza tu instalación local de **Qt6** y emplea **vcpkg** exclusivamente para enlazar `cmark-gfm` en segundos (sin recompilar Qt):
 
-```bash
-sudo apt update && sudo apt install clang libc++-dev libc++abi-dev lld
+```PowerShell
+# 1. Abrir "x64 Native Tools Command Prompt for VS 2022" o PowerShell
+$env:CMAKE_PREFIX_PATH="C:\Qt\6.8.0\msvc2022_64"
+
+# 2. Configurar y compilar con el preset de Windows
+cmake --preset windows-release -DVCPKG_TARGET_TRIPLET=x64-windows
+cmake --build --preset windows-release
+
+# 3. Ejecutar
+.\build-win-release\src\app\FronterMind.exe
 ```
 
-#### Verificar instalación
+Para instrucciones detalladas sobre cómo generar el instalador portable `.zip` con `windeployqt`, crear paquetes `.AppImage` o gestionar los assets gráficos, consulta la documentación técnica en la carpeta `docs/`.
 
-```bash
-clang++ --version
-```
+### Hoja de Ruta (Roadmap)
 
-Debe mostrar versión **19.0** o superior.
+  [x] Fase 1: Gestión de memoria multi-turno y presupuesto dinámico de ventana de contexto.
 
----
+  [x] Fase 2: Motor de herramientas nativas de Sistema de Archivos (read_file, write_file, edit_file, list_directory).
 
-### 2. Instalar CMake
+  [x] Fase 3: Ejecución controlada de comandos de terminal (run_shell_command) con timeout.
 
-#### Linux
+  [x] Fase 4: Conectividad a Internet en tiempo real (web_search y http_fetch).
 
-```bash
-sudo apt install cmake
-```
+  [x] Fase 5: Cliente nativo MCP (Model Context Protocol) sobre stdio y motor de temas personalizable.
 
-#### macOS
+  [ ] Fase 6 (Próximamente): Streaming SSE token a token en tiempo real y soporte multi-sesión con persistencia en SQLite.
 
-```bash
-brew install cmake
-```
+### Licencia
 
-#### Verificar
-
-```bash
-cmake --version
-```
-
-Se requiere **4.4.2** o superior.
-
----
-
-### 3. Instalar Ninja
-
-#### Linux
-
-```bash
-sudo apt install ninja-build
-```
-
-#### macOS
-
-```bash
-brew install ninja
-```
-
-#### Verificar
-
-```bash
-ninja --version
-```
-
----
-
-### 4. Clonar el repositorio
-
-```bash
-git clone https://github.com/tu-usuario/CPP23_Modules_Template.git
-cd CPP23_Modules_Template
-```
-
-> Reemplaza la URL por la de tu repositorio real.
-
----
-
-### 5. Generar el proyecto
-
-Desde la raíz del repositorio, ejecuta:
-
-```bash
-cmake -G Ninja -B build -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_C_COMPILER=clang
-```
-
-Este comando hará lo siguiente:
-
-1. **Configura Clang** como compilador C y C++.
-2. **Genera los archivos Ninja** dentro del directorio `build/`.
-3. **Habilita módulos C++23** a través de las variables en `CMakeLists.txt`.
-4. **Exporta `compile_commands.json`** para integración con LSPs.
-
-Si todo sale bien verás un mensaje como:
-
-```
--- The CXX compiler identification is Clang 19.x.x
--- Configuring done (X.Xs)
--- Generating done (X.Xs)
--- Build files have been written to: /path/to/build
-```
-
----
-
-### 6. Compilar y ejecutar
-
-Compila el proyecto con:
-
-```bash
-cmake --build build
-```
-
-El ejecutable se generará en:
-
-```
-build/CPP23_Modules_Template
-```
-
-Para ejecutarlo:
-
-```bash
-./build/CPP23_Modules_Template
-```
-
-Salida esperada:
-
-```
-Hola desde C++23 con módulos!
-```
-
----
-
-### Resumen visual del flujo de trabajo
-
-```
-[git clone]
-     │
-     v
-[cmake -G Ninja -B build ...]  ← Configura Clang + módulos C++23
-     │
-     v
-[cmake --build build        ]  ← Ninja compila main.cpp con import std;
-     │
-     v
-[./build/CPP23_Modules_Template ]  ← ¡Hola desde C++23 con módulos!
-```
-
----
-
-### Compilación automática en tu editor
-
-Si querés que tu editor compile automáticamente con CMake al guardar, dependiendo de cuál uses:
-
-#### Zed (via `tasks.json`)
-
-Zed no trae una extensión de CMake por defecto, pero podés configurar una **tarea** que ejecute la configuración y compilación. Crea el archivo `.zed/tasks.json` en la raíz del proyecto:
-
-```json
-{
-  "label": "Build (CMake + Ninja)",
-  "command": "sh",
-  "args": [
-    "-c",
-    "cmake -G Ninja -B build -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_C_COMPILER=clang && cmake --build build"
-  ],
-  "reveal": "always",
-  "hide": "never"
-}
-```
-
-Para que se ejecute en cada guardado, agregá el evento en `.zed/tasks.json`:
-
-```json
-{
-  "tasks": [
-    {
-      "label": "Build (CMake + Ninja)",
-      "command": "sh",
-      "args": [
-        "-c",
-        "cmake -G Ninja -B build -DCMAKE_CXX_COMPILER=clang++ -DCMAKE_C_COMPILER=clang && cmake --build build"
-      ],
-      "env": {},
-      "reveal": "always",
-      "autosave": "on_change"
-    }
-  ]
-}
-```
-
-> **Nota:** `autosave: "on_change"` ejecuta la tarea automáticamente cada vez que guardás un archivo, dándote compilación en tiempo real. También podés dispararla manualmente con `Ctrl+Shift+P` → "Tasks: Spawn".
-
-#### VS Code (extension de CMake)
-
-Para VS Code no hace falta nada de esto: instalá la extensión **CMake Tools** (`ms-vscode.cmake-tools`) y activá el auto-build. La extensión se encarga de detectar el `CMakeLists.txt`, configurar el compilador y compilar automáticamente al guardar.
-
-Configurá el `settings.json` para habilitar la compilación con Clang + Ninja:
-
-```json
-{
-  "cmake.buildDirectory": "${workspaceFolder}/build",
-  "cmake.generator": "Ninja",
-  "cmake.configureSettings": {
-    "CMAKE_CXX_COMPILER": "clang++",
-    "CMAKE_C_COMPILER": "clang"
-  }
-}
-```
-
----
-
-## Personalizacion
-
-### Agregar un nuevo módulo
-
-Crea un archivo `.cppm` (extensión recomendada para módulos de interfaz) en una carpeta `modules/`:
-
-```
-CPP23_Modules_Template/
-├── CMakeLists.txt
-├── main.cpp
-├── modules/
-│   └── mi_modulo.cppm
-└── build/
-```
-
-Contenido de `modules/mi_modulo.cppm`:
-
-```cpp
-export module mi_modulo;
-
-export int saludo() {
-    return 42;
-}
-```
-
-En `CMakeLists.txt`, registra el módulo:
-
-```cmake
-add_library(mi_modulo modules/mi_modulo.cppm)
-target_sources(mi_modulo PUBLIC FILE_SET CXX_MODULES FILES modules/mi_modulo.cppm)
-target_link_libraries(CPP23_Modules_Template PRIVATE mi_modulo)
-```
-
-En `main.cpp`:
-
-```cpp
-import std;
-import mi_modulo;
-
-int main() {
-    std::println("El valor es: {}", saludo());
-}
-```
-
----
-
-### Cambiar el nombre del proyecto
-
-En `CMakeLists.txt`, modifica la línea:
-
-```cmake
-project(CPP23_Modules_Template CXX)
-```
-
-por el nombre que desees:
-
-```cmake
-project(MiProyecto CXX)
-```
-
-Recuerda también renombrar el ejecutable en `add_executable`:
-
-```cmake
-add_executable(MiProyecto main.cpp)
-```
-
----
-
-### Agregar dependencias externas
-
-Puedes usar `FetchContent` para descargar dependencias automáticamente:
-
-```cmake
-include(FetchContent)
-
-FetchContent_Declare(
-  fmt
-  GIT_REPOSITORY https://github.com/fmtlib/fmt.git
-  GIT_TAG 10.2.1
-)
-FetchContent_MakeAvailable(fmt)
-
-target_link_libraries(CPP23_Modules_Template PRIVATE fmt::fmt)
-```
-
----
-
-### Habilitar más warnings
-
-Agrega a `CMakeLists.txt` después de `set(CMAKE_CXX_FLAGS ...)`:
-
-```cmake
-set(CMAKE_CXX_FLAGS "-stdlib=libc++ -Wno-reserved-module-identifier -Wall -Wextra -Wpedantic")
-```
-
----
-
-## Solucion de problemas
-
-### Error: `module file not found` o `could not find module`
-
-Asegúrate de que:
-- Estás usando **Clang 19+** (no GCC ni MSVC).
-- `CMAKE_EXPERIMENTAL_CXX_IMPORT_STD` está configurado correctamente.
-- Ejecutaste `cmake --build build` después de cualquier cambio en `CMakeLists.txt`.
-
-### Error: `stdlib=libc++ not found`
-
-Instalá libc++:
-```bash
-# Ubuntu / Debian
-sudo apt install libc++-dev libc++abi-dev
-
-# macOS
-brew install llvm  # incluye libc++
-```
-
-### `compile_commands.json` no se genera
-
-Verificá que esta línea esté en `CMakeLists.txt`:
-```cmake
-set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
-```
-
-### El ejecutable no encuentra la librería estándar
-
-En Linux, puede ser necesario agregar la ruta de libc++ al `LD_LIBRARY_PATH`:
-```bash
-export LD_LIBRARY_PATH=/usr/lib/llvm-19/lib:$LD_LIBRARY_PATH
-```
-
----
-
-## Licencia
-
-Este proyecto se distribuye bajo la licencia **MIT**. Consulta el archivo `LICENSE` para más detalles.
-
----
-
-<div align="center">
-  <sub>Hecho con ❤️ usando <a href="https://clang.llvm.org/">Clang</a>, <a href="https://cmake.org/">CMake</a> y <a href="https://ninja-build.org/">Ninja</a>.</sub>
-</div>
+Distribuido bajo la Licencia MIT. Consulta el archivo LICENSE para más información.

@@ -1,5 +1,10 @@
-# Directorio de compilacion (artefactos generados por CMake/Ninja)
 build/
-
-# Cache del LSP (clangd)
+build-*/
+dist-*/
+AppDir/
 .cache/
+CMakeUserPresets.json
+*.deb
+*.tar.gz
+*.AppImage
+*.zip

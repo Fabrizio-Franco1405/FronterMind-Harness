@@ -1,29 +1,26 @@
 [
   {
-    "label": "Configurar CMake",
-    "command": "cmake",
-    "args": [
-      "-B",
-      "build",
-      "-G",
-      "Ninja",
-      "-DCMAKE_BUILD_TYPE=Debug"
-    ]
+    "label": "1. Linux: Configurar CMake",
+    "command": "cmake --preset linux-debug"
   },
   {
-    "label": "Compilar",
-    "command": "cmake",
-    "args": [
-      "--build",
-      "build"
-    ]
-  },
-  {
-    "label": "Ejecutar",
-    "command": "./build/FronterMind-Harness"
-  },
-  {
-    "label": "Compilar y Ejecutar",
+    "label": "2. Linux: Compilar y Ejecutar",
     "command": "cmake --build build && ./build/src/app/FronterMind"
+  },
+  {
+    "label": "3. Linux: Generar Release (.deb, .tar.gz y .AppImage)",
+    "command": "bash scripts/build-linux-release.sh"
+  },
+  {
+    "label": "4. Windows: Configurar CMake",
+    "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/dev-windows.ps1 -Action configure"
+  },
+  {
+    "label": "5. Windows: Compilar y Ejecutar",
+    "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/dev-windows.ps1 -Action run"
+  },
+  {
+    "label": "6. Windows: Generar Release (.zip e Instalador .exe)",
+    "command": "pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/build-windows-release.ps1"
   }
 ]

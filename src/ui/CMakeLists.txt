@@ -1,14 +1,12 @@
-qt_standard_project_setup(REQUIRES 6.5)
-qt_policy(SET QTP0001 NEW)
-qt_policy(SET QTP0004 NEW)
-
 qt_add_library(FrontUI STATIC)
 
 target_sources(FrontUI PRIVATE
-    src/AppController.cpp
-    include/AppController.h
-    src/IconImageProvider.cpp
-    include/IconImageProvider.h
+    controllers/AppController.cpp
+    controllers/AppController.h
+    controllers/IconImageProvider.cpp
+    controllers/IconImageProvider.h
+    controllers/ThemeManager.cpp
+    controllers/ThemeManager.h
 )
 
 qt_add_qml_module(FrontUI
@@ -23,10 +21,15 @@ qt_add_qml_module(FrontUI
         qml/components/Icon.qml
         qml/views/ChatView.qml
         qml/views/SettingsView.qml
+        qml/views/ToolsMcpView.qml
+        qml/views/AppearanceView.qml
     OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/FronterMind/UI"
 )
 
-target_include_directories(FrontUI PUBLIC include)
+target_include_directories(FrontUI PUBLIC
+    "${CMAKE_CURRENT_SOURCE_DIR}"
+    "${CMAKE_CURRENT_SOURCE_DIR}/controllers"
+)
 
 target_link_libraries(FrontUI
     PUBLIC
