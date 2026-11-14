@@ -26,7 +26,14 @@ EngineManager::EngineManager(QObject *parent) : QObject(parent) {
 }
 
 EngineManager::~EngineManager() {
-    stopServer();
+    if (m_process && m_process->state() != QProcess::NotRunning) {
+        m_killTimer->stop();
+        m_process->terminate();
+        if (!m_process->waitForFinished(2000)) {
+            m_process->kill();
+            m_process->waitForFinished(500);
+        }
+    }
 }
 
 void EngineManager::startServer(const QString &binaryPath, const QString &modelPath, int gpuLayers, int contextSize) {

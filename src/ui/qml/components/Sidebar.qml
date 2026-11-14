@@ -33,11 +33,13 @@ Rectangle {
                 border.color: theme.accentColor
                 border.width: 1
 
-                Icon {
+                Image {
                     anchors.centerIn: parent
-                    iconName: "stars"
-                    iconColor: theme.accentColor
-                    iconSize: 18
+                    width: 24; height: 24
+                    sourceSize: Qt.size(48, 48)
+                    source: "qrc:/assets/logo.svg"
+                    fillMode: Image.PreserveAspectFit
+                    smooth: true
                 }
             }
 

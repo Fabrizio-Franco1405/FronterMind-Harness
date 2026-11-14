@@ -175,11 +175,13 @@ Item {
                     border.color: theme.borderColor
                     border.width: 1
 
-                    Icon {
+                    Image {
                         anchors.centerIn: parent
-                        iconName: "stars"
-                        iconColor: theme.accentColor
-                        iconSize: 36
+                        width: 48; height: 48
+                        sourceSize: Qt.size(96, 96)
+                        source: "qrc:/assets/logo.svg"
+                        fillMode: Image.PreserveAspectFit
+                        smooth: true
                     }
                 }
 
@@ -239,10 +241,21 @@ Item {
                         anchors.top: parent.top
 
                         Icon {
+                            visible: isUser
                             anchors.centerIn: parent
-                            iconName: isUser ? "user" : "stars"
-                            iconColor: isUser ? "#11111b" : theme.accentColor
+                            iconName: "user"
+                            iconColor: "#11111b"
                             iconSize: 16
+                        }
+
+                        Image {
+                            visible: !isUser
+                            anchors.centerIn: parent
+                            width: 22; height: 22
+                            sourceSize: Qt.size(44, 44)
+                            source: "qrc:/assets/logo.svg"
+                            fillMode: Image.PreserveAspectFit
+                            smooth: true
                         }
                     }
 

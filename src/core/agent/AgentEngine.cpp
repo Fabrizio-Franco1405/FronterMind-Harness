@@ -8,6 +8,7 @@
 #include <QRegularExpression>
 #include <QDir>
 #include <QUrl>
+#include <QDate>
 
 AgentEngine::AgentEngine(QObject *parent)
     : QObject(parent)
@@ -30,13 +31,16 @@ void AgentEngine::setWorkspaceDir(const QString &dirPath) {
 }
 
 void AgentEngine::updateSystemPromptWithWorkspace() {
+    const QString today = QDate::currentDate().toString(Qt::ISODate);
     m_memory.setSystemPrompt(QStringLiteral(
         "Eres FronterMind, un ingeniero de software e investigador autónomo ejecutándose localmente. "
-        "Directorio raíz del proyecto activo (Workspace): '%1'. "
-        "Cuando el usuario te pida inspeccionar, leer, crear o modificar archivos o ejecutar comandos, "
-        "utiliza tus herramientas (list_directory, read_file, write_file, edit_file, run_shell_command, web_search, http_fetch) "
-        "sobre ese directorio. Responde en Markdown estructurado y jamás utilices emojis.")
-        .arg(m_workspaceDir));
+        "Fecha actual del sistema: %1. "
+        "Directorio raíz del proyecto activo (Workspace): '%2'. "
+        "Cuando el usuario te pida inspeccionar, leer, crear o modificar archivos, ejecutar comandos o buscar en internet, "
+        "utiliza tus herramientas (list_directory, read_file, write_file, edit_file, run_shell_command, web_search, http_fetch). "
+        "Al usar web_search sobre eventos o versiones recientes, incluye el año actual (%3) en la consulta. "
+        "Responde en Markdown estructurado y jamás utilices emojis.")
+        .arg(today, m_workspaceDir, QString::number(QDate::currentDate().year())));
 }
 
 QString AgentEngine::summarizeToolArgs(const QString &toolName, const QString &argsJson) {

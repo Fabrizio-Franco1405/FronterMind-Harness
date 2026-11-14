@@ -1,29 +1,22 @@
 [
   {
-    "label": "Configurar CMake",
-    "command": "cmake",
-    "args": [
-      "-B",
-      "build",
-      "-G",
-      "Ninja",
-      "-DCMAKE_BUILD_TYPE=Debug"
-    ]
+    "label": "Configurar CMake (Linux)",
+    "command": "cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Debug"
   },
   {
-    "label": "Compilar",
-    "command": "cmake",
-    "args": [
-      "--build",
-      "build"
-    ]
-  },
-  {
-    "label": "Ejecutar",
-    "command": "./build/FronterMind-Harness"
-  },
-  {
-    "label": "Compilar y Ejecutar",
+    "label": "Compilar y Ejecutar (Linux)",
     "command": "cmake --build build && ./build/src/app/FronterMind"
+  },
+  {
+    "label": "Generar Release .deb y .tar.gz (Linux)",
+    "command": "cmake -B build-release -G Ninja -DCMAKE_BUILD_TYPE=Release && cmake --build build-release && cd build-release && cpack"
+  },
+  {
+    "label": "Configurar CMake (Windows)",
+    "command": "cmake --preset windows-debug -DVCPKG_TARGET_TRIPLET=x64-windows"
+  },
+  {
+    "label": "Compilar y Ejecutar (Windows)",
+    "command": "cmake --build build-win && .\\build-win\\src\\app\\FronterMind.exe"
   }
 ]
