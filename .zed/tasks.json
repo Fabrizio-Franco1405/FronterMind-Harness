@@ -13,10 +13,10 @@
   },
   {
     "label": "Configurar CMake (Windows)",
-    "command": "cmake --preset windows-debug -DVCPKG_TARGET_TRIPLET=x64-windows"
+    "command": "$vsPath = & \"${env:ProgramFiles(x86)}\\Microsoft Visual Studio\\Installer\\vswhere.exe\" -latest -property installationPath; Import-Module \"$vsPath\\Common7\\Tools\\Microsoft.VisualStudio.DevShell.dll\"; Enter-VsDevShell -VsInstallPath $vsPath -SkipAutomaticLocation -DevCmdArguments \"-arch=x64 -host_arch=x64\"; Remove-Item -Recurse -Force build-win -ErrorAction SilentlyContinue; cmake -S . -B build-win -G Ninja -DCMAKE_BUILD_TYPE=Debug -DVCPKG_TARGET_TRIPLET=x64-windows"
   },
   {
     "label": "Compilar y Ejecutar (Windows)",
-    "command": "cmake --build build-win && .\\build-win\\src\\app\\FronterMind.exe"
+    "command": "$vsPath = & \"${env:ProgramFiles(x86)}\\Microsoft Visual Studio\\Installer\\vswhere.exe\" -latest -property installationPath; Import-Module \"$vsPath\\Common7\\Tools\\Microsoft.VisualStudio.DevShell.dll\"; Enter-VsDevShell -VsInstallPath $vsPath -SkipAutomaticLocation -DevCmdArguments \"-arch=x64 -host_arch=x64\"; if (!(Test-Path .\\build-win\\FronterMind.exe)) { cmake -S . -B build-win -G Ninja -DCMAKE_BUILD_TYPE=Debug -DVCPKG_TARGET_TRIPLET=x64-windows }; cmake --build build-win; if ($LASTEXITCODE -eq 0) { $env:PATH = \"C:\\Qt\\6.12.0\\msvc2022_64\\bin;$PWD\\build-win;$env:PATH\"; .\\build-win\\FronterMind.exe }"
   }
 ]

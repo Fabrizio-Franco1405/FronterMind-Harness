@@ -17,14 +17,15 @@ target_include_directories(FrontMarkdownViewer PUBLIC
 
 if(WIN32)
     find_package(cmark-gfm CONFIG REQUIRED)
+    find_package(cmark-gfm-extensions CONFIG REQUIRED)
     target_link_libraries(FrontMarkdownViewer
         PUBLIC
             Qt6::Quick
             Qt6::Gui
             Qt6::Qml
         PRIVATE
-            libcmark-gfm_static
-            libcmark-gfm-extensions_static
+            libcmark-gfm
+            libcmark-gfm-extensions
     )
 else()
     find_package(PkgConfig REQUIRED)

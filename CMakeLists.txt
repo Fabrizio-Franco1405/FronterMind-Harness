@@ -6,6 +6,46 @@ if(UNIX AND NOT APPLE)
         set(CMAKE_CXX_COMPILER /usr/bin/clang++)
         set(CMAKE_C_COMPILER /usr/bin/clang)
     endif()
+elseif(WIN32)
+    # 1. Autodetectar vcpkg (incluyendo el integrado en Visual Studio 2026/2022)
+    if(NOT DEFINED CMAKE_TOOLCHAIN_FILE)
+        if(DEFINED ENV{VCPKG_ROOT} AND EXISTS "$ENV{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake")
+            set(CMAKE_TOOLCHAIN_FILE "$ENV{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake" CACHE STRING "")
+        else()
+            foreach(VCPKG_CANDIDATE
+                "C:/Program Files/Microsoft Visual Studio/18/Community/VC/vcpkg"
+                "C:/Program Files/Microsoft Visual Studio/2022/Community/VC/vcpkg"
+                "C:/vcpkg"
+                "C:/src/vcpkg"
+                "C:/dev/vcpkg"
+                "$ENV{USERPROFILE}/vcpkg"
+            )
+                if(EXISTS "${VCPKG_CANDIDATE}/scripts/buildsystems/vcpkg.cmake")
+                    set(CMAKE_TOOLCHAIN_FILE "${VCPKG_CANDIDATE}/scripts/buildsystems/vcpkg.cmake" CACHE STRING "")
+                    message(STATUS "[Windows] vcpkg detectado en: ${VCPKG_CANDIDATE}")
+                    break()
+                endif()
+            endforeach()
+        endif()
+    endif()
+
+    # 2. Autodetectar Qt6 en C:/Qt
+    if(NOT DEFINED CMAKE_PREFIX_PATH AND EXISTS "C:/Qt")
+        file(GLOB QT_VERSIONS LIST_DIRECTORIES true "C:/Qt/6.*")
+        list(SORT QT_VERSIONS ORDER DESCENDING)
+        foreach(QT_VER_DIR ${QT_VERSIONS})
+            foreach(QT_COMPILER_DIR "msvc2022_64" "msvc2019_64" "llvm-mingw_64" "mingw_64")
+                if(EXISTS "${QT_VER_DIR}/${QT_COMPILER_DIR}/lib/cmake/Qt6")
+                    set(CMAKE_PREFIX_PATH "${QT_VER_DIR}/${QT_COMPILER_DIR}" CACHE PATH "" FORCE)
+                    message(STATUS "[Windows] Qt6 detectado automaticamente en: ${QT_VER_DIR}/${QT_COMPILER_DIR}")
+                    break()
+                endif()
+            endforeach()
+            if(CMAKE_PREFIX_PATH)
+                break()
+            endif()
+        endforeach()
+    endif()
 endif()
 
 project(FronterMind-Harness VERSION 0.1.0 LANGUAGES CXX)
@@ -24,7 +64,7 @@ if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
 endif()
 
 if(MSVC)
-    add_compile_options(/utf-8)
+    add_compile_options(/utf-8 /MP)
 endif()
 
 if(UNIX AND NOT APPLE)
@@ -39,7 +79,7 @@ set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
 
-find_package(Qt6 REQUIRED COMPONENTS Quick Qml QmlPrivate QuickDialogs2 Svg)
+find_package(Qt6 REQUIRED COMPONENTS Quick Qml QmlPrivate QuickDialogs2 Svg Network)
 
 qt_standard_project_setup(REQUIRES 6.5)
 qt_policy(SET QTP0001 NEW)
@@ -51,7 +91,6 @@ add_subdirectory(src/libs/MarkdownViewer)
 add_subdirectory(src/ui)
 add_subdirectory(src/app)
 
-# En Windows, ocultar la ventana negra de terminal al abrir el .exe en modo Release
 if(WIN32)
     set_target_properties(FronterMind PROPERTIES WIN32_EXECUTABLE $<CONFIG:Release>)
 endif()
