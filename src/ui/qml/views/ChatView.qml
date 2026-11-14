@@ -170,17 +170,18 @@ Item {
 
                 Rectangle {
                     Layout.alignment: Qt.AlignHCenter
-                    width: 72; height: 72; radius: 20
-                    color: theme.bgSidebar
-                    border.color: theme.borderColor
+                    width: 72; height: 72; radius: 18
+                    color: "#11111b"
+                    border.color: theme.accentColor
                     border.width: 1
+                    clip: true
 
                     Image {
-                        anchors.centerIn: parent
-                        width: 48; height: 48
-                        sourceSize: Qt.size(96, 96)
+                        anchors.fill: parent
+                        anchors.margins: 4
+                        sourceSize: Qt.size(128, 128)
                         source: "qrc:/assets/logo.svg"
-                        fillMode: Image.PreserveAspectFit
+                        fillMode: Image.PreserveAspectCrop
                         smooth: true
                     }
                 }
@@ -232,10 +233,11 @@ Item {
                     Rectangle {
                         id: avatar
                         visible: !isTool
-                        width: 34; height: 34; radius: 10
-                        color: isUser ? theme.userBubbleColor : theme.bgSidebar
+                        width: 34; height: 34; radius: 9
+                        color: isUser ? theme.userBubbleColor : "#11111b"
                         border.color: isUser ? "transparent" : theme.accentColor
                         border.width: isUser ? 0 : 1
+                        clip: true
                         anchors.left: isUser ? undefined : parent.left
                         anchors.right: isUser ? parent.right : undefined
                         anchors.top: parent.top
@@ -250,11 +252,11 @@ Item {
 
                         Image {
                             visible: !isUser
-                            anchors.centerIn: parent
-                            width: 22; height: 22
-                            sourceSize: Qt.size(44, 44)
+                            anchors.fill: parent
+                            anchors.margins: 2
+                            sourceSize: Qt.size(64, 64)
                             source: "qrc:/assets/logo.svg"
-                            fillMode: Image.PreserveAspectFit
+                            fillMode: Image.PreserveAspectCrop
                             smooth: true
                         }
                     }

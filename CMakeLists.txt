@@ -1,69 +1,10 @@
 cmake_minimum_required(VERSION 3.28)
-set(CMAKE_SUPPRESS_DEVELOPER_WARNINGS 1 CACHE INTERNAL "No dev warnings")
 
 if(UNIX AND NOT APPLE)
     set(CMAKE_EXPERIMENTAL_CXX_IMPORT_STD "f35a9ac6-8463-4d38-8eec-5d6008153e7d")
-    if(NOT CMAKE_CXX_COMPILER)
-        set(CMAKE_CXX_COMPILER /usr/bin/clang++)
-        set(CMAKE_C_COMPILER /usr/bin/clang)
-    endif()
-  elseif(WIN32)
-      # 1. Autodetectar vcpkg solo en la primera configuración
-      if(NOT DEFINED CMAKE_TOOLCHAIN_FILE)
-          foreach(VCPKG_CANDIDATE
-              "C:/Program Files/Microsoft Visual Studio/18/Community/VC/vcpkg"
-              "C:/Program Files/Microsoft Visual Studio/2022/Community/VC/vcpkg"
-              "C:/vcpkg"
-              "C:/src/vcpkg"
-              "C:/dev/vcpkg"
-              "$ENV{USERPROFILE}/vcpkg"
-          )
-              if(EXISTS "${VCPKG_CANDIDATE}/scripts/buildsystems/vcpkg.cmake")
-                  set(CMAKE_TOOLCHAIN_FILE "${VCPKG_CANDIDATE}/scripts/buildsystems/vcpkg.cmake")
-                  break()
-              endif()
-          endforeach()
-      endif()
-
-      # 2. Detectar Qt6 sin usar file(GLOB) para evitar que Ninja re-ejecute CMake en OneDrive
-      if(NOT CMAKE_PREFIX_PATH)
-          foreach(QT_CANDIDATE
-              "C:/Qt/6.12.0/msvc2022_64"
-              "C:/Qt/6.11.0/msvc2022_64"
-              "C:/Qt/6.10.0/msvc2022_64"
-              "C:/Qt/6.9.0/msvc2022_64"
-              "C:/Qt/6.8.0/msvc2022_64"
-          )
-              if(EXISTS "${QT_CANDIDATE}/lib/cmake/Qt6")
-                  list(APPEND CMAKE_PREFIX_PATH "${QT_CANDIDATE}")
-                  break()
-              endif()
-          endforeach()
-      endif()
-  endif()
+endif()
 
 project(FronterMind-Harness VERSION 0.1.0 LANGUAGES CXX)
-
-# --- QLEMENTINE ICONS ---
-include(FetchContent)
-FetchContent_Declare(
-    qlementine-icons
-    GIT_REPOSITORY "https://github.com/oclero/qlementine-icons.git"
-    GIT_TAG        v1.16.1
-)
-FetchContent_MakeAvailable(qlementine-icons)
-
-if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
-    add_compile_options(-Wno-reserved-module-identifier)
-endif()
-
-if(MSVC)
-    add_compile_options(/utf-8 /MP)
-endif()
-
-if(UNIX AND NOT APPLE)
-    set(CMAKE_CXX_MODULE_STD ON)
-endif()
 
 set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -73,48 +14,36 @@ set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
 
-find_package(Qt6 REQUIRED COMPONENTS Quick Qml QmlPrivate QuickControls2 QuickDialogs2 Svg Network)
+if(UNIX AND NOT APPLE)
+    set(CMAKE_CXX_MODULE_STD ON)
+    if(CMAKE_CXX_COMPILER_ID MATCHES "Clang")
+        add_compile_options(-Wno-reserved-module-identifier)
+    endif()
+elseif(MSVC)
+    add_compile_options(/utf-8)
+endif()
 
-qt_standard_project_setup(REQUIRES 6.5)
-qt_policy(SET QTP0001 NEW)
-qt_policy(SET QTP0004 NEW)
+include(FetchContent)
+FetchContent_Declare(
+    qlementine-icons
+    GIT_REPOSITORY "https://github.com/oclero/qlementine-icons.git"
+    GIT_TAG        v1.16.1
+)
+FetchContent_MakeAvailable(qlementine-icons)
+
+find_package(Qt6 REQUIRED COMPONENTS Quick Qml QmlPrivate QuickControls2 QuickDialogs2 Svg Network)
 
 if(WIN32)
     find_package(cmark-gfm CONFIG REQUIRED)
     find_package(cmark-gfm-extensions CONFIG REQUIRED)
 endif()
 
+qt_standard_project_setup(REQUIRES 6.5)
+qt_policy(SET QTP0001 NEW)
+qt_policy(SET QTP0004 NEW)
+
 add_subdirectory(src/platform)
 add_subdirectory(src/core)
 add_subdirectory(src/libs/MarkdownViewer)
 add_subdirectory(src/ui)
 add_subdirectory(src/app)
-
-if(WIN32)
-    set_target_properties(FronterMind PROPERTIES WIN32_EXECUTABLE $<CONFIG:Release>)
-endif()
-
-# --- INSTALACIÓN Y EMPAQUETADO (RELEASE v0.1.0) ---
-install(TARGETS FronterMind
-    RUNTIME DESTINATION bin
-    BUNDLE DESTINATION .
-)
-
-set(CPACK_PACKAGE_NAME "frontermind-harness")
-set(CPACK_PACKAGE_VENDOR "Fabrizio Franco")
-set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "FronterMind - Local AI Agent Harness en C++23 y Qt6")
-set(CPACK_PACKAGE_VERSION_MAJOR "0")
-set(CPACK_PACKAGE_VERSION_MINOR "1")
-set(CPACK_PACKAGE_VERSION_PATCH "0")
-set(CPACK_PACKAGE_CONTACT "fabrizio@frontermind.local")
-
-if(WIN32)
-    set(CPACK_GENERATOR "ZIP")
-elseif(UNIX AND NOT APPLE)
-    set(CPACK_GENERATOR "DEB;TGZ")
-    set(CPACK_DEBIAN_PACKAGE_ARCHITECTURE "amd64")
-    set(CPACK_DEBIAN_PACKAGE_SHLIBDEPS ON)
-    set(CPACK_DEBIAN_PACKAGE_SECTION "devel")
-endif()
-
-include(CPack)

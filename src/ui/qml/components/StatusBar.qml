@@ -15,10 +15,10 @@ Rectangle {
         anchors.rightMargin: 16
         spacing: 14
 
-        // Cápsula de Memoria de la App (Texto 100% centrado)
+        // Izquierda: Cápsula de Memoria de la App
         Rectangle {
             Layout.preferredHeight: 22
-            Layout.preferredWidth: appText.implicitWidth + 20
+            Layout.preferredWidth: appText.implicitWidth + 24
             radius: 5
             color: theme.bgSidebar
             border.color: theme.borderColor
@@ -45,22 +45,12 @@ Rectangle {
             }
         }
 
-        // Modelo activo
-        RowLayout {
-            spacing: 6
+        // Espaciador elástico: empuja CPU, RAM y VRAM al extremo derecho
+        Item {
             Layout.fillWidth: true
-            Icon { iconName: "file"; iconColor: theme.accentColor; iconSize: 12 }
-            Text {
-                text: backend.currentModel
-                color: theme.textSecondary
-                font.family: theme.fontFamily
-                font.pixelSize: 11
-                elide: Text.ElideMiddle
-                Layout.fillWidth: true
-            }
         }
 
-        // CPU
+        // Derecha: CPU
         Row {
             spacing: 5
             Text { text: "CPU:"; color: theme.textSecondary; font.family: theme.fontFamily; font.pixelSize: 11; anchors.verticalCenter: parent.verticalCenter }
@@ -69,7 +59,7 @@ Rectangle {
 
         Rectangle { width: 1; height: 12; color: theme.borderColor }
 
-        // RAM
+        // Derecha: RAM
         Row {
             spacing: 5
             Text { text: "RAM:"; color: theme.textSecondary; font.family: theme.fontFamily; font.pixelSize: 11; anchors.verticalCenter: parent.verticalCenter }
@@ -78,7 +68,7 @@ Rectangle {
 
         Rectangle { width: 1; height: 12; color: theme.borderColor }
 
-        // VRAM
+        // Derecha: VRAM
         Row {
             spacing: 5
             Text { text: "VRAM:"; color: theme.textSecondary; font.family: theme.fontFamily; font.pixelSize: 11; anchors.verticalCenter: parent.verticalCenter }

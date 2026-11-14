@@ -3,71 +3,57 @@
   "configurePresets": [
     {
       "name": "linux-debug",
-      "displayName": "Linux Debug (Nativo)",
+      "displayName": "Linux Debug",
       "generator": "Ninja",
       "binaryDir": "${sourceDir}/build",
-      "condition": {
-        "type": "equals",
-        "lhs": "${hostSystemName}",
-        "rhs": "Linux"
-      },
+      "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Linux" },
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "Debug",
-        "CMAKE_C_COMPILER": "/usr/bin/clang",
         "CMAKE_CXX_COMPILER": "/usr/bin/clang++",
-        "CMAKE_CXX_STANDARD": "23",
-        "CMAKE_CXX_STANDARD_REQUIRED": "ON",
-        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON"
+        "CMAKE_C_COMPILER": "/usr/bin/clang"
       }
     },
     {
       "name": "linux-release",
-      "displayName": "Linux Release (Optimizado)",
-      "inherits": "linux-debug",
-      "binaryDir": "${sourceDir}/build-release",
-      "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Release"
-      }
-    },
-    {
-      "name": "windows-base",
-      "hidden": true,
+      "displayName": "Linux Release",
       "generator": "Ninja",
-      "condition": {
-        "type": "equals",
-        "lhs": "${hostSystemName}",
-        "rhs": "Windows"
-      },
+      "binaryDir": "${sourceDir}/build-release",
+      "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Linux" },
       "cacheVariables": {
-        "CMAKE_CXX_STANDARD": "23",
-        "CMAKE_CXX_STANDARD_REQUIRED": "ON",
-        "CMAKE_EXPORT_COMPILE_COMMANDS": "ON",
-        "VCPKG_TARGET_TRIPLET": "x64-windows"
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_CXX_COMPILER": "/usr/bin/clang++",
+        "CMAKE_C_COMPILER": "/usr/bin/clang"
       }
     },
     {
       "name": "windows-debug",
       "displayName": "Windows Debug",
-      "inherits": "windows-base",
+      "generator": "Ninja",
       "binaryDir": "${sourceDir}/build-win",
+      "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Windows" },
       "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Debug"
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+        "CMAKE_C_COMPILER": "C:/Program Files/LLVM/bin/clang-cl.exe",
+        "CMAKE_CXX_COMPILER": "C:/Program Files/LLVM/bin/clang-cl.exe",
+        "CMAKE_PREFIX_PATH": "C:/Qt/6.12.0/msvc2022_64",
+        "CMAKE_TOOLCHAIN_FILE": "C:/Program Files/Microsoft Visual Studio/18/Community/VC/vcpkg/scripts/buildsystems/vcpkg.cmake",
+        "VCPKG_TARGET_TRIPLET": "x64-windows"
       }
     },
     {
       "name": "windows-release",
-      "displayName": "Windows Release (Optimizado)",
-      "inherits": "windows-base",
+      "displayName": "Windows Release",
+      "generator": "Ninja",
       "binaryDir": "${sourceDir}/build-win-release",
+      "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Windows" },
       "cacheVariables": {
-        "CMAKE_BUILD_TYPE": "Release"
+        "CMAKE_BUILD_TYPE": "Release",
+        "CMAKE_C_COMPILER": "C:/Program Files/LLVM/bin/clang-cl.exe",
+        "CMAKE_CXX_COMPILER": "C:/Program Files/LLVM/bin/clang-cl.exe",
+        "CMAKE_PREFIX_PATH": "C:/Qt/6.12.0/msvc2022_64",
+        "CMAKE_TOOLCHAIN_FILE": "C:/Program Files/Microsoft Visual Studio/18/Community/VC/vcpkg/scripts/buildsystems/vcpkg.cmake",
+        "VCPKG_TARGET_TRIPLET": "x64-windows"
       }
     }
-  ],
-  "buildPresets": [
-    { "name": "linux-debug", "configurePreset": "linux-debug" },
-    { "name": "linux-release", "configurePreset": "linux-release" },
-    { "name": "windows-debug", "configurePreset": "windows-debug" },
-    { "name": "windows-release", "configurePreset": "windows-release" }
   ]
 }

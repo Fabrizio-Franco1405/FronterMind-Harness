@@ -28,17 +28,18 @@ Rectangle {
             spacing: 10
 
             Rectangle {
-                width: 34; height: 34; radius: 8
-                color: theme.bgSurface
+                width: 36; height: 36; radius: 9
+                color: "#11111b"
                 border.color: theme.accentColor
                 border.width: 1
+                clip: true
 
                 Image {
-                    anchors.centerIn: parent
-                    width: 24; height: 24
-                    sourceSize: Qt.size(48, 48)
+                    anchors.fill: parent
+                    anchors.margins: 3
+                    sourceSize: Qt.size(64, 64)
                     source: "qrc:/assets/logo.svg"
-                    fillMode: Image.PreserveAspectFit
+                    fillMode: Image.PreserveAspectCrop
                     smooth: true
                 }
             }

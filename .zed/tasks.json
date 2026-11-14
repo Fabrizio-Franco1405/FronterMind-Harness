@@ -1,26 +1,26 @@
 [
   {
-    "label": "Configurar CMake (Linux)",
-    "command": "cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Debug"
+    "label": "1. Linux: Configurar CMake",
+    "command": "cmake --preset linux-debug"
   },
   {
-    "label": "Compilar y Ejecutar (Linux)",
+    "label": "2. Linux: Compilar y Ejecutar",
     "command": "cmake --build build && ./build/src/app/FronterMind"
   },
   {
-    "label": "Generar Release .deb y .tar.gz (Linux)",
-    "command": "cmake -B build-release -G Ninja -DCMAKE_BUILD_TYPE=Release && cmake --build build-release && cd build-release && cpack"
+    "label": "3. Linux: Generar Release (.deb y .tar.gz)",
+    "command": "cmake --preset linux-release && cmake --build build-release && cd build-release && cpack"
   },
   {
-    "label": "Configurar CMake (Windows)",
-    "command": "$vsPath = & \"${env:ProgramFiles(x86)}\\Microsoft Visual Studio\\Installer\\vswhere.exe\" -latest -property installationPath; Import-Module \"$vsPath\\Common7\\Tools\\Microsoft.VisualStudio.DevShell.dll\"; Enter-VsDevShell -VsInstallPath $vsPath -SkipAutomaticLocation -DevCmdArguments \"-arch=x64 -host_arch=x64\"; Remove-Item -Recurse -Force build-win -ErrorAction SilentlyContinue; cmake -S . -B build-win -G Ninja -DCMAKE_BUILD_TYPE=Debug -DVCPKG_TARGET_TRIPLET=x64-windows; (Get-Content build-win\\build.ninja) -replace 'build build\\.ninja: RERUN_CMAKE', 'build build.ninja.disabled: RERUN_CMAKE' | Set-Content build-win\\build.ninja"
+    "label": "4. Windows: Configurar CMake",
+    "command": "$vsPath = & \"${env:ProgramFiles(x86)}\\Microsoft Visual Studio\\Installer\\vswhere.exe\" -latest -property installationPath; Import-Module \"$vsPath\\Common7\\Tools\\Microsoft.VisualStudio.DevShell.dll\"; Enter-VsDevShell -VsInstallPath $vsPath -SkipAutomaticLocation -DevCmdArguments \"-arch=x64 -host_arch=x64\"; Remove-Item -Recurse -Force build-win -ErrorAction SilentlyContinue; cmake --preset windows-debug; if (Test-Path build-win\\build.ninja) { (Get-Content build-win\\build.ninja) -replace 'build build\\.ninja: RERUN_CMAKE', 'build build.ninja.disabled: RERUN_CMAKE' | Set-Content build-win\\build.ninja }"
   },
   {
-    "label": "Compilar y Ejecutar (Windows)",
-    "command": "$vsPath = & \"${env:ProgramFiles(x86)}\\Microsoft Visual Studio\\Installer\\vswhere.exe\" -latest -property installationPath; Import-Module \"$vsPath\\Common7\\Tools\\Microsoft.VisualStudio.DevShell.dll\"; Enter-VsDevShell -VsInstallPath $vsPath -SkipAutomaticLocation -DevCmdArguments \"-arch=x64 -host_arch=x64\"; (Get-Content build-win\\build.ninja) -replace 'build build\\.ninja: RERUN_CMAKE', 'build build.ninja.disabled: RERUN_CMAKE' | Set-Content build-win\\build.ninja; ninja -C build-win FronterMind; if ($LASTEXITCODE -eq 0) { $env:PATH = \"C:\\Qt\\6.12.0\\msvc2022_64\\bin;$PWD\\build-win;$env:PATH\"; .\\build-win\\FronterMind.exe }"
+    "label": "5. Windows: Compilar y Ejecutar",
+    "command": "$vsPath = & \"${env:ProgramFiles(x86)}\\Microsoft Visual Studio\\Installer\\vswhere.exe\" -latest -property installationPath; Import-Module \"$vsPath\\Common7\\Tools\\Microsoft.VisualStudio.DevShell.dll\"; Enter-VsDevShell -VsInstallPath $vsPath -SkipAutomaticLocation -DevCmdArguments \"-arch=x64 -host_arch=x64\"; Stop-Process -Name FronterMind -Force -ErrorAction SilentlyContinue; if (Test-Path build-win\\build.ninja) { (Get-Content build-win\\build.ninja) -replace 'build build\\.ninja: RERUN_CMAKE', 'build build.ninja.disabled: RERUN_CMAKE' | Set-Content build-win\\build.ninja }; ninja -C build-win; if ($LASTEXITCODE -eq 0) { $env:PATH = \"C:\\Qt\\6.12.0\\msvc2022_64\\bin;$PWD\\build-win;$env:PATH\"; .\\build-win\\FronterMind.exe }"
   },
   {
-    "label": "Generar Release Portable .zip (Windows)",
-    "command": "$vsPath = & \"${env:ProgramFiles(x86)}\\Microsoft Visual Studio\\Installer\\vswhere.exe\" -latest -property installationPath; Import-Module \"$vsPath\\Common7\\Tools\\Microsoft.VisualStudio.DevShell.dll\"; Enter-VsDevShell -VsInstallPath $vsPath -SkipAutomaticLocation -DevCmdArguments \"-arch=x64 -host_arch=x64\"; cmake -S . -B build-win-release -G Ninja -DCMAKE_BUILD_TYPE=Release -DVCPKG_TARGET_TRIPLET=x64-windows; (Get-Content build-win-release\\build.ninja) -replace 'build build\\.ninja: RERUN_CMAKE', 'build build.ninja.disabled: RERUN_CMAKE' | Set-Content build-win-release\\build.ninja; ninja -C build-win-release FronterMind; Remove-Item -Recurse -Force dist-win -ErrorAction SilentlyContinue; New-Item -ItemType Directory -Path dist-win | Out-Null; Copy-Item .\\build-win-release\\FronterMind.exe dist-win\\; Copy-Item .\\build-win-release\\*.dll dist-win\\ -ErrorAction SilentlyContinue; C:\\Qt\\6.12.0\\msvc2022_64\\bin\\windeployqt.exe --release --qmldir src/ui/qml dist-win\\FronterMind.exe; Compress-Archive -Path dist-win\\* -DestinationPath FronterMind-v0.1.0-Windows-x64.zip -Force"
+    "label": "6. Windows: Generar Release (.zip e Instalador .exe)",
+    "command": "$vsPath = & \"${env:ProgramFiles(x86)}\\Microsoft Visual Studio\\Installer\\vswhere.exe\" -latest -property installationPath; Import-Module \"$vsPath\\Common7\\Tools\\Microsoft.VisualStudio.DevShell.dll\"; Enter-VsDevShell -VsInstallPath $vsPath -SkipAutomaticLocation -DevCmdArguments \"-arch=x64 -host_arch=x64\"; Stop-Process -Name FronterMind -Force -ErrorAction SilentlyContinue; cmake --preset windows-release; if (Test-Path build-win-release\\build.ninja) { (Get-Content build-win-release\\build.ninja) -replace 'build build\\.ninja: RERUN_CMAKE', 'build build.ninja.disabled: RERUN_CMAKE' | Set-Content build-win-release\\build.ninja }; ninja -C build-win-release; if ($LASTEXITCODE -eq 0) { Remove-Item -Recurse -Force dist-win -ErrorAction SilentlyContinue; New-Item -ItemType Directory -Path dist-win | Out-Null; Copy-Item .\\build-win-release\\FronterMind.exe dist-win\\; Copy-Item .\\build-win-release\\*.dll dist-win\\ -ErrorAction SilentlyContinue; C:\\Qt\\6.12.0\\msvc2022_64\\bin\\windeployqt.exe --release --qmldir src/ui/qml dist-win\\FronterMind.exe; Compress-Archive -Path dist-win\\* -DestinationPath FronterMind-v0.1.0-Windows-x64.zip -Force; if (Test-Path \"${env:ProgramFiles(x86)}\\Inno Setup 6\\ISCC.exe\") { & \"${env:ProgramFiles(x86)}\\Inno Setup 6\\ISCC.exe\" installer.iss } }"
   }
 ]
