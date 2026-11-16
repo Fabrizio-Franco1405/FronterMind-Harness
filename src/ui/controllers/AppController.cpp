@@ -14,15 +14,16 @@
 #include <QDir>
 
 // ============================================================================
-// SECCIÓN 2: FUNCIONES AUXILIARES DE NORMALIZACIÓN Y ESTADOS NATURALES
+// SECCIÓN 2: MÓDULO DE FORMATEO Y NORMALIZACIÓN (PRINCIPIO SRP DE SOLID)
 // ============================================================================
+namespace ChatUiHelper {
+
 static QString normalizeFilePath(const QString &rawPath) {
     QString p = rawPath.trimmed();
     if (p.startsWith("file://")) {
         p = QUrl(p).toLocalFile();
     }
 #ifdef _WIN32
-    // Exclusivo para Windows: si quedó "/C:/Users/...", quitar la primera barra "/"
     if (p.length() >= 3 && p[0] == '/' && p[1].isLetter() && p[2] == ':') {
         p.remove(0, 1);
     }
@@ -30,7 +31,6 @@ static QString normalizeFilePath(const QString &rawPath) {
     return QDir::fromNativeSeparators(p);
 }
 
-// Genera mensajes estilo OpenCode / DeepSeek Harness para cada acción del agente
 static QString formatNaturalToolStatus(const QString &toolName, const QString &targetSummary, bool isError) {
     const QString cleanFile = QFileInfo(targetSummary).fileName().isEmpty()
                               ? targetSummary
@@ -64,8 +64,26 @@ static QString formatNaturalToolStatus(const QString &toolName, const QString &t
     return QStringLiteral("▸ Ejecutando herramienta %1 (%2)").arg(toolName, targetSummary);
 }
 
+static QString nextMonologueForTool(const QString &toolName, const QString &targetSummary) {
+    if (toolName == "list_directory") {
+        return QStringLiteral("Agente: Analizando estructura del proyecto...");
+    }
+    if (toolName == "read_file") {
+        return QStringLiteral("Agente: Inspeccionando código de %1...").arg(QFileInfo(targetSummary).fileName());
+    }
+    if (toolName == "web_search" || toolName == "http_fetch") {
+        return QStringLiteral("Agente: Procesando información obtenida de internet...");
+    }
+    if (toolName == "write_file" || toolName == "edit_file") {
+        return QStringLiteral("Agente: Verificando cambios aplicados en el archivo...");
+    }
+    return QStringLiteral("Agente: Evaluando salida de %1...").arg(toolName);
+}
+
+} // namespace ChatUiHelper
+
 // ============================================================================
-// SECCIÓN 3: CONSTRUCTOR Y CONEXIONES DE SEÑALES CON EL MOTOR C++
+// SECCIÓN 3: CONSTRUCTOR Y CONEXIONES REACTIVAS CON EL MOTOR C++ (SSE + TOOLS)
 // ============================================================================
 AppController::AppController(QObject *parent)
     : QObject(parent)
@@ -76,7 +94,7 @@ AppController::AppController(QObject *parent)
     loadSettings();
     m_agentEngine->setMaxContextTokens(m_maxContext);
 
-    // --- 3.1: Inicio de generación y pensamiento inicial ---
+    // --- 3.1: Inicio de generación ---
     connect(m_agentEngine, &AgentEngine::startedGenerating, this, [this]() {
         m_isGenerating = true;
         emit isGeneratingChanged();
@@ -84,44 +102,76 @@ AppController::AppController(QObject *parent)
         emit chatMessagesChanged();
     });
 
-    // --- 3.2: Trazas en vivo de ejecución de herramientas y monólogo interno ---
+    // --- 3.2: Trazas en tiempo real de herramientas ejecutadas ---
     connect(m_agentEngine, &AgentEngine::toolActionLogged, this,
             [this](const QString &toolName, const QString &targetSummary, const QString &resultPreview, bool isError) {
         Q_UNUSED(resultPreview);
-        const QString stepLine = "Tool: " + formatNaturalToolStatus(toolName, targetSummary, isError);
+        const QString stepLine = "Tool: " + ChatUiHelper::formatNaturalToolStatus(toolName, targetSummary, isError);
+        const QString nextThought = ChatUiHelper::nextMonologueForTool(toolName, targetSummary);
 
-        if (!m_chatMessages.isEmpty() && m_chatMessages.last().startsWith("Agente: ") &&
-            m_chatMessages.last().endsWith("...")) {
+        // Si había una burbuja de streaming o de pensamiento activa al final, insertar el paso antes
+        if (!m_chatMessages.isEmpty() && m_chatMessages.last().startsWith("Agente: ")) {
             const int lastIdx = m_chatMessages.size() - 1;
             m_chatMessages.insert(lastIdx, stepLine);
-
-            if (toolName == "list_directory") {
-                m_chatMessages.last() = "Agente: Analizando estructura del proyecto...";
-            } else if (toolName == "read_file") {
-                m_chatMessages.last() = "Agente: Inspeccionando código de " + QFileInfo(targetSummary).fileName() + "...";
-            } else if (toolName == "web_search" || toolName == "http_fetch") {
-                m_chatMessages.last() = "Agente: Procesando información obtenida de internet...";
-            } else if (toolName == "write_file" || toolName == "edit_file") {
-                m_chatMessages.last() = "Agente: Verificando cambios aplicados en el archivo...";
-            } else {
-                m_chatMessages.last() = "Agente: Evaluando salida de " + toolName + "...";
-            }
+            m_chatMessages.last() = nextThought;
         } else {
             m_chatMessages.append(stepLine);
+            m_chatMessages.append(nextThought);
         }
         emit chatMessagesChanged();
     });
 
-    // --- 3.3: Recepción de respuesta final del modelo ---
+    // --- 3.3: Streaming SSE Token por Token en Tiempo Real (Latencia 0ms) ---
+    connect(m_agentEngine, &AgentEngine::streamChunkReceived, this, [this](const QString &partialContent) {
+        // Caso A: El modelo está pensando dentro de <think>...</think> (ej. DeepSeek-R1 / Qwen3)
+        if (partialContent.contains("<think>") && !partialContent.contains("</think>")) {
+            QString rawThought = partialContent;
+            rawThought.remove("<think>");
+            const QStringList lines = rawThought.trimmed().split('\n', Qt::SkipEmptyParts);
+            const QString lastLine = lines.isEmpty() ? QStringLiteral("Razonando") : lines.last().trimmed();
+            const QString preview = lastLine.length() > 80 ? lastLine.left(80) : lastLine;
+
+            const QString thinkingBubble = QStringLiteral("Agente: %1...").arg(preview);
+            if (!m_chatMessages.isEmpty() && m_chatMessages.last().startsWith("Agente: ") &&
+                m_chatMessages.last().endsWith("...")) {
+                m_chatMessages.last() = thinkingBubble;
+            } else {
+                m_chatMessages.append(thinkingBubble);
+            }
+            emit chatMessagesChanged();
+            return;
+        }
+
+        // Caso B: El modelo ya está emitiendo la respuesta final en Markdown
+        removeTemporaryStatusBubble();
+
+        const QString liveBubble = QStringLiteral("Agente: ") + partialContent;
+        if (!m_chatMessages.isEmpty() && m_chatMessages.last().startsWith("Agente: ") &&
+            !m_chatMessages.last().endsWith("...")) {
+            m_chatMessages.last() = liveBubble;
+        } else {
+            m_chatMessages.append(liveBubble);
+        }
+        emit chatMessagesChanged();
+    });
+
+    // --- 3.4: Consolidación de la respuesta final ---
     connect(m_agentEngine, &AgentEngine::messageReceived, this, [this](const QString &response) {
         m_isGenerating = false;
         emit isGeneratingChanged();
         removeTemporaryStatusBubble();
-        m_chatMessages.append("Agente: " + response);
+
+        const QString finalBubble = QStringLiteral("Agente: ") + response;
+        if (!m_chatMessages.isEmpty() && m_chatMessages.last().startsWith("Agente: ") &&
+            !m_chatMessages.last().endsWith("...")) {
+            m_chatMessages.last() = finalBubble;
+        } else {
+            m_chatMessages.append(finalBubble);
+        }
         emit chatMessagesChanged();
     });
 
-    // --- 3.4: Manejo de errores de red o inferencia ---
+    // --- 3.5: Manejo de errores ---
     connect(m_agentEngine, &AgentEngine::errorOccurred, this, [this](const QString &error) {
         m_isGenerating = false;
         emit isGeneratingChanged();
@@ -130,7 +180,7 @@ AppController::AppController(QObject *parent)
         emit chatMessagesChanged();
     });
 
-    // --- 3.5: Cierre del ciclo de generación ---
+    // --- 3.6: Fin del ciclo de inferencia ---
     connect(m_agentEngine, &AgentEngine::finishedGenerating, this, [this]() {
         if (m_isGenerating) {
             m_isGenerating = false;
@@ -140,7 +190,7 @@ AppController::AppController(QObject *parent)
         }
     });
 
-    // --- 3.6: Telemetría de consumo de ventana de contexto (Tokens) ---
+    // --- 3.7: Actualización de tokens usados ---
     connect(m_agentEngine, &AgentEngine::tokensUpdated, this, [this](int prompt, int completion, int total) {
         Q_UNUSED(prompt);
         Q_UNUSED(completion);
@@ -197,7 +247,7 @@ void AppController::setCurrentEngine(const QString &engine) {
 }
 
 void AppController::setEnginePath(const QString &path) {
-    const QString clean = path.trimmed().startsWith("http") ? path.trimmed() : normalizeFilePath(path);
+    const QString clean = path.trimmed().startsWith("http") ? path.trimmed() : ChatUiHelper::normalizeFilePath(path);
     if (m_enginePath == clean) return;
     m_enginePath = clean;
 
@@ -220,7 +270,7 @@ void AppController::setMaxContext(int context) {
 }
 
 void AppController::setWorkspacePath(const QString &path) {
-    const QString cleanPath = normalizeFilePath(path);
+    const QString cleanPath = ChatUiHelper::normalizeFilePath(path);
     if (cleanPath.isEmpty() || cleanPath == m_agentEngine->workspaceDir()) return;
 
     m_agentEngine->setWorkspaceDir(cleanPath);
@@ -229,10 +279,10 @@ void AppController::setWorkspacePath(const QString &path) {
 }
 
 // ============================================================================
-// SECCIÓN 5: GESTIÓN DEL CHAT, ARCHIVOS ADJUNTOS Y CAMBIO DE MODELO EN CALIENTE
+// SECCIÓN 5: GESTIÓN DEL CHAT, ARCHIVOS ADJUNTOS Y HOT-SWAP DE MODELOS
 // ============================================================================
 void AppController::attachFile(const QString &path) {
-    const QString clean = normalizeFilePath(path);
+    const QString clean = ChatUiHelper::normalizeFilePath(path);
     QFile file(clean);
     if (file.open(QIODevice::ReadOnly | QIODevice::Text)) {
         m_attachedFileName = QFileInfo(clean).fileName();
@@ -274,11 +324,8 @@ void AppController::sendMessage(const QString &text) {
     m_agentEngine->sendMessage(m_currentModel, finalMessage);
 }
 
-// ============================================================================
-// SECCIÓN 5.4: CAMBIO DE MODELO ACTIVO CON RECARGA EN CALIENTE (HOT-SWAP)
-// ============================================================================
 void AppController::loadModel(const QString &alias, const QString &path) {
-    const QString clean = normalizeFilePath(path);
+    const QString clean = ChatUiHelper::normalizeFilePath(path);
     const QString targetModel = alias + " (" + clean + ")";
     if (m_currentModel == targetModel) return;
 
@@ -286,9 +333,7 @@ void AppController::loadModel(const QString &alias, const QString &path) {
     emit currentModelChanged();
     saveSettings();
 
-    // Si llama-server está corriendo y el usuario cambia de modelo en el ComboBox,
-    // detenemos el proceso anterior y levantamos automáticamente el nuevo archivo .gguf
-    // pasando los 4 argumentos: (binaryPath, modelPath, gpuLayers = 99, contextSize)
+    // Hot-Swap automático en VRAM si llama-server está en ejecución
     if (m_engineManager && m_engineManager->isRunning() && !m_enginePath.startsWith("http")) {
         m_engineManager->stopServer();
         QTimer::singleShot(450, this, [this, clean]() {
@@ -298,7 +343,7 @@ void AppController::loadModel(const QString &alias, const QString &path) {
 }
 
 void AppController::addModel(const QString &path, const QString &alias) {
-    const QString clean = normalizeFilePath(path);
+    const QString clean = ChatUiHelper::normalizeFilePath(path);
     if (clean.isEmpty() || alias.isEmpty()) return;
     QVariantMap modelData;
     modelData["path"] = clean;
@@ -398,7 +443,7 @@ void AppController::saveSettings() {
     for (const QVariant &item : m_localModels) {
         QVariantMap map = item.toMap();
         QJsonObject obj;
-        obj["path"] = normalizeFilePath(map["path"].toString());
+        obj["path"] = ChatUiHelper::normalizeFilePath(map["path"].toString());
         obj["alias"] = map["alias"].toString();
         modelsArray.append(obj);
     }
@@ -420,7 +465,7 @@ void AppController::loadSettings() {
 
     m_currentEngine = settings.value("engine", "llama.cpp").toString();
     const QString rawEnginePath = settings.value("enginePath", "/usr/bin/llama-server").toString();
-    m_enginePath = rawEnginePath.trimmed().startsWith("http") ? rawEnginePath.trimmed() : normalizeFilePath(rawEnginePath);
+    m_enginePath = rawEnginePath.trimmed().startsWith("http") ? rawEnginePath.trimmed() : ChatUiHelper::normalizeFilePath(rawEnginePath);
     m_currentModel = settings.value("currentModel", "Ninguno").toString();
     m_maxContext = settings.value("maxContext", 4096).toInt();
 
@@ -432,7 +477,7 @@ void AppController::loadSettings() {
         m_agentEngine->setServerUrl(m_enginePath.startsWith("http") ? m_enginePath : "http://127.0.0.1:8080/v1/chat/completions");
     }
 
-    const QString savedWorkspace = normalizeFilePath(settings.value("workspacePath", "").toString());
+    const QString savedWorkspace = ChatUiHelper::normalizeFilePath(settings.value("workspacePath", "").toString());
     if (!savedWorkspace.isEmpty()) {
         m_agentEngine->setWorkspaceDir(savedWorkspace);
     }
@@ -445,7 +490,7 @@ void AppController::loadSettings() {
             for (const QJsonValue &val : doc.array()) {
                 QJsonObject obj = val.toObject();
                 QVariantMap map;
-                const QString cleanModelPath = normalizeFilePath(obj["path"].toString());
+                const QString cleanModelPath = ChatUiHelper::normalizeFilePath(obj["path"].toString());
                 const QString alias = obj["alias"].toString();
                 map["path"] = cleanModelPath;
                 map["alias"] = alias;
@@ -490,6 +535,7 @@ void AppController::loadSettings() {
 }
 
 void AppController::clearChat() {
+    m_agentEngine->stopGeneration();
     m_chatMessages.clear();
     m_agentEngine->clearMemory();
     m_usedTokens = 0;
