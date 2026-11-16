@@ -6,106 +6,84 @@ import "../components"
 
 Rectangle {
     id: root
-    color: "#1e1e2e"
+    Layout.fillWidth: true
+    implicitHeight: mainCol.implicitHeight + 24
+    color: theme.bgBase   // <-- Antes tenía un color oscuro fijo que hacía parecer que estaba en otro contenedor
 
-    readonly property bool canSend: (chatInput.text.trim() !== "" || backend.attachedFileName !== "") && !backend.isGenerating
-    implicitHeight: inputCard.implicitHeight + 32
-
-    function submitMessage() {
-        if (root.canSend) {
-            backend.sendMessage(chatInput.text)
-            chatInput.text = ""
-        }
+    // Línea divisoria superior sutil
+    Rectangle {
+        width: parent.width
+        height: 1
+        color: theme.borderColor
+        anchors.top: parent.top
     }
 
-    Rectangle {
-        id: inputCard
+    ColumnLayout {
+        id: mainCol
         anchors.fill: parent
-        anchors.leftMargin: 30
-        anchors.rightMargin: 30
-        anchors.topMargin: 12
-        anchors.bottomMargin: 20
-        implicitHeight: Math.min(180, Math.max(54, innerColumn.implicitHeight + 20))
-        color: "#181825"
-        radius: 14
-        border.color: chatInput.activeFocus ? "#cba6f7" : "#313244"
-        border.width: chatInput.activeFocus ? 1.5 : 1
-        Behavior on border.color { ColorAnimation { duration: 100 } }
+        anchors.margins: 12
+        anchors.leftMargin: 24
+        anchors.rightMargin: 24
+        spacing: 8
 
-        ColumnLayout {
-            id: innerColumn
-            anchors.fill: parent
-            anchors.margins: 10
-            spacing: 8
+        // Chip de archivo adjunto (si existe)
+        Rectangle {
+            visible: backend.attachedFileName !== ""
+            Layout.preferredHeight: 28
+            Layout.preferredWidth: attachRow.implicitWidth + 20
+            color: theme.bgSidebar
+            border.color: theme.accentColor
+            border.width: 1
+            radius: 6
 
-            // --- CHIP DE ARCHIVO ADJUNTO (CON ICONOS PUROS) ---
-            Rectangle {
-                visible: backend.attachedFileName !== ""
-                Layout.fillWidth: true
-                Layout.preferredHeight: 30
-                color: "#313244"
-                radius: 8
-                border.color: "#45475a"
-                border.width: 1
-
-                RowLayout {
-                    anchors.fill: parent
-                    anchors.leftMargin: 12
-                    anchors.rightMargin: 8
-                    spacing: 8
-
-                    Icon { iconName: "file"; iconColor: "#cba6f7"; iconSize: 13 }
-
-                    Text {
-                        text: backend.attachedFileName
-                        color: "#cdd6f4"
-                        font.pixelSize: 12
-                        font.bold: true
-                        elide: Text.ElideMiddle
-                        Layout.fillWidth: true
-                    }
-
-                    Rectangle {
-                        width: 22; height: 22; radius: 4
-                        color: removeAttachMouse.containsMouse ? "#45475a" : "transparent"
-
-                        Icon {
-                            anchors.centerIn: parent
-                            iconName: "close"
-                            iconColor: "#f38ba8"
-                            iconSize: 12
-                        }
-
-                        MouseArea {
-                            id: removeAttachMouse
-                            anchors.fill: parent
-                            hoverEnabled: true
-                            cursorShape: Qt.PointingHandCursor
-                            onClicked: backend.clearAttachment()
-                        }
-                    }
+            RowLayout {
+                id: attachRow
+                anchors.centerIn: parent
+                spacing: 8
+                Icon { iconName: "file"; iconColor: theme.accentColor; iconSize: 13 }
+                Text {
+                    text: backend.attachedFileName
+                    color: theme.textPrimary
+                    font.family: theme.monoFontFamily
+                    font.pixelSize: 12
+                }
+                MouseArea {
+                    width: 16; height: 16
+                    cursorShape: Qt.PointingHandCursor
+                    onClicked: backend.clearAttachment()
+                    Icon { anchors.centerIn: parent; iconName: "close"; iconColor: "#f38ba8"; iconSize: 11 }
                 }
             }
+        }
 
-            // --- FILA DE ENTRADA ---
+        // Caja redondeada del Input
+        Rectangle {
+            Layout.fillWidth: true
+            implicitHeight: Math.min(Math.max(50, inputScroll.contentHeight + 20), 160)
+            color: theme.bgSidebar
+            border.color: messageInput.activeFocus ? theme.accentColor : theme.borderColor
+            border.width: 1
+            radius: 12
+            Behavior on border.color { ColorAnimation { duration: 120 } }
+
             RowLayout {
-                Layout.fillWidth: true
-                Layout.fillHeight: true
+                anchors.fill: parent
+                anchors.leftMargin: 12
+                anchors.rightMargin: 10
                 spacing: 10
 
+                // Botón Adjuntar Archivo
                 Rectangle {
-                    Layout.preferredWidth: 36
-                    Layout.preferredHeight: 36
-                    Layout.alignment: Qt.AlignBottom
+                    Layout.preferredWidth: 34
+                    Layout.preferredHeight: 34
                     radius: 8
-                    color: attachMouse.containsMouse ? "#313244" : "transparent"
-                    Behavior on color { ColorAnimation { duration: 100 } }
+                    color: attachMouse.containsMouse ? theme.bgSurface : "transparent"
 
                     Icon {
                         anchors.centerIn: parent
                         iconName: "attachement"
-                        iconColor: attachMouse.containsMouse ? "#cdd6f4" : "#6c7086"
-                        iconSize: 17
+                        iconColor: theme.textSecondary
+                        iconSize: 16
                     }
 
                     MouseArea {
@@ -113,73 +91,79 @@ Rectangle {
                         anchors.fill: parent
                         hoverEnabled: true
                         cursorShape: Qt.PointingHandCursor
-                        onClicked: fileDialog.open()
+                        onClicked: attachDialog.open()
                     }
                 }
 
+                // Área de texto desplazable
                 ScrollView {
+                    id: inputScroll
                     Layout.fillWidth: true
                     Layout.fillHeight: true
-                    Layout.minimumHeight: 36
-                    Layout.maximumHeight: 120
                     clip: true
 
                     TextArea {
-                        id: chatInput
-                        placeholderText: backend.isGenerating
-                                         ? "El agente está procesando tu solicitud..."
-                                         : "Escribe un mensaje o pega código... (Enter para enviar, Shift+Enter nueva línea)"
-                        placeholderTextColor: "#585b70"
-                        color: "#cdd6f4"
-                        font.pixelSize: 14
+                        id: messageInput
+                        placeholderText: "Escribe un mensaje o pega código... (Enter para enviar, Shift+Enter nueva línea)"
+                        placeholderTextColor: theme.textSecondary
+                        color: theme.textPrimary
+                        font.family: theme.fontFamily
+                        font.pixelSize: 13
                         wrapMode: TextArea.Wrap
+                        verticalAlignment: TextEdit.AlignVCenter
                         background: null
-                        enabled: !backend.isGenerating
-                        topPadding: 7
-                        bottomPadding: 7
+                        selectByMouse: true
 
-                        Keys.onPressed: function(event) {
-                            if ((event.key === Qt.Key_Return || event.key === Qt.Key_Enter) && !(event.modifiers & Qt.ShiftModifier)) {
+                        Keys.onReturnPressed: (event) => {
+                            if (event.modifiers & Qt.ShiftModifier) {
+                                event.accepted = false
+                            } else {
                                 event.accepted = true
-                                root.submitMessage()
+                                root.submit()
                             }
                         }
                     }
                 }
 
+                // Botón Enviar
                 Rectangle {
-                    id: sendBtn
-                    Layout.preferredWidth: 38
-                    Layout.preferredHeight: 38
-                    Layout.alignment: Qt.AlignBottom
-                    radius: 9
-                    color: root.canSend ? (sendMouse.containsMouse ? "#b4befe" : "#cba6f7") : "#242436"
-                    Behavior on color { ColorAnimation { duration: 100 } }
+                    Layout.preferredWidth: 36
+                    Layout.preferredHeight: 36
+                    radius: 8
+                    readonly property bool canSend: (messageInput.text.trim().length > 0 || backend.attachedFileName !== "") && !backend.isGenerating
+                    color: canSend ? theme.accentColor : theme.bgSurface
+                    border.color: theme.borderColor
+                    border.width: canSend ? 0 : 1
+                    Behavior on color { ColorAnimation { duration: 120 } }
 
                     Icon {
                         anchors.centerIn: parent
-                        anchors.horizontalCenterOffset: 1
                         iconName: "send"
-                        iconColor: root.canSend ? "#11111b" : "#585b70"
-                        iconSize: 17
+                        iconColor: parent.canSend ? "#11111b" : theme.textSecondary
+                        iconSize: 15
                     }
 
                     MouseArea {
-                        id: sendMouse
                         anchors.fill: parent
-                        hoverEnabled: true
-                        cursorShape: root.canSend ? Qt.PointingHandCursor : Qt.ArrowCursor
-                        onClicked: root.submitMessage()
+                        cursorShape: parent.canSend ? Qt.PointingHandCursor : Qt.ArrowCursor
+                        onClicked: if (parent.canSend) root.submit()
                     }
                 }
             }
         }
     }
 
+    function submit() {
+        if (backend.isGenerating) return
+        const txt = messageInput.text
+        if (txt.trim() === "" && backend.attachedFileName === "") return
+        messageInput.text = ""
+        backend.sendMessage(txt)
+    }
+
     FileDialog {
-        id: fileDialog
+        id: attachDialog
         title: "Adjuntar archivo al contexto"
-        nameFilters: ["Archivos de código y texto (*.txt *.md *.json *.py *.cpp *.h *.hpp *.qml *.cmake)", "Todos los archivos (*)"]
-        onAccepted: backend.attachFile(selectedFile.toString().replace("file://", ""))
+        onAccepted: backend.attachFile(selectedFile.toString())
     }
 }

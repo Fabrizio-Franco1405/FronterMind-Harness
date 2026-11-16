@@ -4,7 +4,7 @@ if(UNIX AND NOT APPLE)
     set(CMAKE_EXPERIMENTAL_CXX_IMPORT_STD "f35a9ac6-8463-4d38-8eec-5d6008153e7d")
 endif()
 
-project(FronterMind-Harness VERSION 0.1.0 LANGUAGES CXX)
+project(FronterMind-Harness VERSION 0.2.0 LANGUAGES CXX)
 
 # 1. Cargar librerías externas ANTES de activar CMAKE_CXX_MODULE_STD
 include(FetchContent)
@@ -33,7 +33,7 @@ set(CMAKE_AUTOMOC ON)
 set(CMAKE_AUTORCC ON)
 set(CMAKE_AUTOUIC ON)
 
-find_package(Qt6 REQUIRED COMPONENTS Quick Qml QmlPrivate QuickControls2 QuickDialogs2 Svg Network)
+find_package(Qt6 REQUIRED COMPONENTS Quick Qml QmlPrivate QuickControls2 QuickDialogs2 Svg Network Widgets)
 
 if(WIN32)
     find_package(cmark-gfm CONFIG REQUIRED)

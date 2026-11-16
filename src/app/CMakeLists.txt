@@ -16,6 +16,7 @@ target_link_libraries(FronterMind PRIVATE
     qlementine-icons
     Qt6::Svg
     Qt6::QuickControls2
+    Qt6::Widgets
 )
 
 if(WIN32)

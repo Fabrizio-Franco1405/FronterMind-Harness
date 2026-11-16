@@ -55,11 +55,15 @@ void EngineManager::startServer(const QString &binaryPath, const QString &modelP
     });
     #endif
 
+    // ============================================================================
+    // SECCIÓN: ARGUMENTOS DE ALTO RENDIMIENTO PARA LLAMA-SERVER (LATENCIA CERO)
+    // ============================================================================
     QStringList args;
     args << "-m" << modelPath
-         << "-ngl" << QString::number(gpuLayers)
+         << "-ngl" << "99"
          << "-c" << QString::number(contextSize)
-         << "--jinja"
+         << "-np" << "1"            // 1 único slot dedicado al 100% para el usuario
+         << "--jinja"               // Activa plantillas nativas de Tool Calling (Qwen3 / Llama3)
          << "--host" << "127.0.0.1"
          << "--port" << "8080";
 

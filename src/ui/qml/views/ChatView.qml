@@ -8,6 +8,9 @@ import FronterMind.Components.MarkdownViewer
 Item {
     id: root
 
+    // ========================================================================
+    // SECCIÓN 1: DIÁLOGO NATIVO DE SELECCIÓN DE PROYECTO (WORKSPACE)
+    // ========================================================================
     FolderDialog {
         id: workspaceDialog
         title: "Seleccionar carpeta del proyecto (Workspace)"
@@ -18,13 +21,21 @@ Item {
         anchors.fill: parent
         spacing: 0
 
-        // --- HEADER SUPERIOR ---
+        // ====================================================================
+        // SECCIÓN 2: CABECERA SUPERIOR (TÍTULO, PRESUPUESTO DE TOKENS Y MODELO)
+        // ====================================================================
         Rectangle {
             Layout.fillWidth: true
             Layout.preferredHeight: 72
             color: theme.bgBase
 
-            Rectangle { width: parent.width; height: 1; color: theme.bgSurface; anchors.bottom: parent.bottom }
+            // Línea divisoria inferior de la cabecera
+            Rectangle {
+                width: parent.width
+                height: 1
+                color: theme.borderColor
+                anchors.bottom: parent.bottom
+            }
 
             RowLayout {
                 anchors.fill: parent
@@ -32,6 +43,7 @@ Item {
                 anchors.rightMargin: 30
                 spacing: 16
 
+                // --- 2.1: Título de la Vista y Medidor de Contexto (Tokens) ---
                 ColumnLayout {
                     spacing: 4
                     Text {
@@ -65,7 +77,7 @@ Item {
                     }
                 }
 
-                // --- SELECTOR DE CARPETA DE PROYECTO (WORKSPACE) ---
+                // --- 2.2: Botón Selector de Carpeta de Trabajo (Workspace) ---
                 Rectangle {
                     Layout.preferredHeight: 34
                     Layout.preferredWidth: Math.min(320, wsRow.implicitWidth + 24)
@@ -101,18 +113,44 @@ Item {
                     }
                 }
 
+                // Espaciador elástico central
                 Item { Layout.fillWidth: true }
 
-                Text { text: "Modelo:"; color: theme.textSecondary; font.family: theme.fontFamily; font.pixelSize: 13 }
+                // --- 2.3: Selector Desplegable de Modelo GGUF Activo ---
+                Text {
+                    text: "Modelo:"
+                    color: theme.textSecondary
+                    font.family: theme.fontFamily
+                    font.pixelSize: 13
+                }
 
+                // --- 2.3: Selector Desplegable de Modelo GGUF Activo (Sincronizado en tiempo real) ---
                 ComboBox {
                     id: modelSelector
                     Layout.preferredWidth: 220
                     Layout.preferredHeight: 36
                     model: backend.localModels
                     textRole: "alias"
-                    onActivated: {
-                        var m = backend.localModels[currentIndex]
+
+                    function syncCurrentModelIndex() {
+                        for (var i = 0; i < backend.localModels.length; ++i) {
+                            var item = backend.localModels[i]
+                            if (backend.currentModel.indexOf(item.alias + " (") === 0) {
+                                currentIndex = i
+                                return
+                            }
+                        }
+                    }
+
+                    Component.onCompleted: syncCurrentModelIndex()
+                    Connections {
+                        target: backend
+                        function onCurrentModelChanged() { modelSelector.syncCurrentModelIndex() }
+                        function onLocalModelsChanged() { modelSelector.syncCurrentModelIndex() }
+                    }
+
+                    onActivated: (index) => {
+                        var m = backend.localModels[index]
                         backend.loadModel(m.alias, m.path)
                     }
                     contentItem: Text {
@@ -132,6 +170,7 @@ Item {
                     }
                 }
 
+                // --- 2.4: Botón para Limpiar Historial de Conversación ---
                 Rectangle {
                     Layout.preferredWidth: 36
                     Layout.preferredHeight: 36
@@ -158,11 +197,15 @@ Item {
             }
         }
 
-        // --- ÁREA DE MENSAJES ---
-        Item {
+        // ====================================================================
+        // SECCIÓN 3: CONTENEDOR CENTRAL DEL CHAT (BIENVENIDA + LISTA DE MENSAJES)
+        // ====================================================================
+        Rectangle {
             Layout.fillWidth: true
             Layout.fillHeight: true
+            color: theme.bgBase
 
+            // --- 3.1: Pantalla de Bienvenida (Visible cuando no hay mensajes) ---
             ColumnLayout {
                 anchors.centerIn: parent
                 spacing: 14
@@ -204,11 +247,12 @@ Item {
                 }
             }
 
+            // --- 3.2: Lista Dinámica de Mensajes y Trazas del Agente ---
             ListView {
                 id: messageList
                 anchors.fill: parent
                 clip: true
-                spacing: 16
+                spacing: 12
                 cacheBuffer: 2000
                 model: backend.chatMessages
                 visible: backend.chatMessages.length > 0
@@ -224,12 +268,14 @@ Item {
                     width: messageList.width - 60
                     height: bubble.height
 
-                    property bool isUser: modelData.startsWith("Tú:")
-                    property bool isTool: modelData.startsWith("Tool:")
-                    property bool isThinking: modelData.startsWith("Agente: Pensando") || modelData.startsWith("Agente: Analizando")
-                    property bool isSystem: modelData.startsWith("Sistema:")
-                    property bool isMarkdown: !isUser && !isSystem && !isThinking && !isTool
+                    // --- 3.2.1: Clasificación del Tipo de Mensaje ---
+                    readonly property bool isUser: modelData.startsWith("Tú:")
+                    readonly property bool isTool: modelData.startsWith("Tool:")
+                    readonly property bool isSystem: modelData.startsWith("Sistema:")
+                    readonly property bool isThinking: modelData.startsWith("Agente: ") && modelData.endsWith("...")
+                    readonly property bool isMarkdown: !isUser && !isSystem && !isThinking && !isTool
 
+                    // --- 3.2.2: Perfil de Avatar (Usuario a la derecha / IA a la izquierda) ---
                     Rectangle {
                         id: avatar
                         visible: !isTool
@@ -261,19 +307,20 @@ Item {
                         }
                     }
 
+                    // --- 3.2.3: Contenedor de Burbuja / Traza de Actividad ---
                     Rectangle {
                         id: bubble
                         readonly property real maxBubbleWidth: parent.width * 0.85
 
                         width: (isSystem || isThinking || isTool)
-                               ? Math.min(maxBubbleWidth, statusRow.implicitWidth + 32)
+                               ? Math.min(maxBubbleWidth, statusRow.implicitWidth + 28)
                                : (isUser
                                   ? Math.min(parent.width * 0.78, userText.implicitWidth + 28)
                                   : Math.min(maxBubbleWidth, markdownView.implicitWidth + 28))
                         height: (isSystem || isThinking || isTool)
-                                ? Math.max(36, statusText.implicitHeight + 18)
+                                ? Math.max(isTool ? 28 : 36, statusText.implicitHeight + (isTool ? 10 : 18))
                                 : (isUser ? userText.implicitHeight + 24 : markdownView.implicitHeight + 28)
-                        radius: isTool ? 8 : 12
+                        radius: isTool ? 6 : 12
 
                         anchors.top: parent.top
                         anchors.left: isUser ? undefined : (isTool ? parent.left : avatar.right)
@@ -281,21 +328,35 @@ Item {
                         anchors.leftMargin: isUser ? 0 : (isTool ? 48 : 14)
                         anchors.rightMargin: isUser ? 14 : 0
 
-                        color: isUser ? theme.userBubbleColor : (isTool ? theme.bgDarkest : (isThinking ? theme.bgSidebar : theme.bgSurface))
-                        border.color: isUser ? theme.userBubbleColor : (isSystem ? "#f38ba8" : (isTool ? theme.accentColor : theme.borderColor))
+                        color: isUser
+                               ? theme.userBubbleColor
+                               : (isTool ? theme.bgSidebar : (isThinking ? theme.bgSidebar : theme.bgSurface))
+                        border.color: isUser
+                                      ? theme.userBubbleColor
+                                      : (isSystem ? "#f38ba8" : (isTool ? theme.borderColor : theme.borderColor))
                         border.width: isUser ? 0 : 1
 
+                        // --- 3.2.4: Vista de Estado / Monólogo Interno / Paso de Herramienta ---
                         RowLayout {
                             id: statusRow
                             visible: isSystem || isThinking || isTool
-                            x: 14
+                            x: 12
                             anchors.verticalCenter: parent.verticalCenter
-                            width: Math.min(bubble.maxBubbleWidth - 28, statusText.implicitWidth + 28)
+                            width: Math.min(bubble.maxBubbleWidth - 24, statusText.implicitWidth + 26)
                             spacing: 8
 
+                            // Indicador visual de actividad (Punto verde en pasos completados / Icono en pensamiento)
+                            Rectangle {
+                                visible: isTool
+                                width: 6; height: 6; radius: 3
+                                color: "#a6e3a1"
+                                Layout.alignment: Qt.AlignVCenter
+                            }
+
                             Icon {
-                                iconName: isTool ? "code" : (isThinking ? "hourglass" : "warning")
-                                iconColor: isTool ? "#a6e3a1" : (isThinking ? theme.accentColor : "#f38ba8")
+                                visible: !isTool
+                                iconName: isThinking ? "hourglass" : "warning"
+                                iconColor: isThinking ? theme.accentColor : "#f38ba8"
                                 iconSize: 14
                                 Layout.alignment: Qt.AlignVCenter
                             }
@@ -304,7 +365,7 @@ Item {
                                 id: statusText
                                 Layout.fillWidth: true
                                 text: modelData.replace("Sistema: ", "").replace("Agente: ", "").replace("Tool: ", "")
-                                color: isTool ? "#a6e3a1" : (isThinking ? theme.textSecondary : "#f38ba8")
+                                color: isTool ? theme.textSecondary : (isThinking ? theme.textPrimary : "#f38ba8")
                                 font.family: isTool ? theme.monoFontFamily : theme.fontFamily
                                 font.italic: isThinking
                                 font.pixelSize: isTool ? 12 : 13
@@ -312,6 +373,7 @@ Item {
                             }
                         }
 
+                        // --- 3.2.5: Texto del Mensaje del Usuario ---
                         Text {
                             id: userText
                             visible: isUser
@@ -326,6 +388,7 @@ Item {
                             lineHeight: 1.25
                         }
 
+                        // --- 3.2.6: Renderizador C++ Markdown para Respuestas del Agente ---
                         MarkdownView {
                             id: markdownView
                             visible: isMarkdown
@@ -339,6 +402,9 @@ Item {
             }
         }
 
+        // ====================================================================
+        // SECCIÓN 4: BARRA INFERIOR DE ENTRADA DE MENSAJES Y ARCHIVOS ADJUNTOS
+        // ====================================================================
         ChatInput {
             Layout.fillWidth: true
         }

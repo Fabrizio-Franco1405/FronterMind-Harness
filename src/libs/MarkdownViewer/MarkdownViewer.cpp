@@ -1,3 +1,6 @@
+// ============================================================================
+// SECCIÓN 1: CABECERAS E INCLUSIONES DEL PARSER MARKDOWN (CMARK-GFM)
+// ============================================================================
 #include "MarkdownViewer.h"
 #include <cmark-gfm.h>
 #include <cmark-gfm-core-extensions.h>
@@ -7,6 +10,9 @@
 #include <QSet>
 #include <QVariantMap>
 
+// ============================================================================
+// SECCIÓN 2: REGISTRO DE EXTENSIONES GITHUB FLAVORED MARKDOWN (TABLAS, TAREAS)
+// ============================================================================
 MarkdownParser::MarkdownParser(QObject *parent) : QObject(parent) {
     static bool registered = false;
     if (!registered) {
@@ -15,44 +21,50 @@ MarkdownParser::MarkdownParser(QObject *parent) : QObject(parent) {
     }
 }
 
+// ============================================================================
+// SECCIÓN 3: UTILIDAD DE PORTAPAPELES PARA BOTONES "COPIAR CÓDIGO"
+// ============================================================================
 void MarkdownParser::copyToClipboard(const QString &text) const {
     if (QClipboard *clipboard = QGuiApplication::clipboard()) {
         clipboard->setText(text);
     }
 }
 
+// ============================================================================
+// SECCIÓN 4: HOJA DE ESTILOS HTML INTERNA PARA EL MOTOR DE TEXTO DE QT6
+// ============================================================================
 QString MarkdownParser::styleHtmlForQt(const QString &rawHtml) {
     QString styled = rawHtml.trimmed();
 
-    // 1. Párrafos con respiración cómoda
+    // --- 4.1: Párrafos con respiración cómoda ---
     styled.replace("<p>", "<p style=\"margin-top: 6px; margin-bottom: 8px; line-height: 145%; color: #cdd6f4;\">");
 
-    // 2. Títulos con jerarquía visual Catppuccin (Lavanda / Azul / Malva)
+    // --- 4.2: Títulos con jerarquía visual Catppuccin (Lavanda / Azul / Malva) ---
     styled.replace("<h1>", "<h1 style=\"color: #cba6f7; font-size: 20px; font-weight: bold; margin-top: 14px; margin-bottom: 8px;\">");
     styled.replace("<h2>", "<h2 style=\"color: #b4befe; font-size: 17px; font-weight: bold; margin-top: 12px; margin-bottom: 6px;\">");
     styled.replace("<h3>", "<h3 style=\"color: #89b4fa; font-size: 15px; font-weight: bold; margin-top: 10px; margin-bottom: 4px;\">");
     styled.replace("<h4>", "<h4 style=\"color: #94e2d5; font-size: 14px; font-weight: bold; margin-top: 8px; margin-bottom: 4px;\">");
 
-    // 3. Negritas y cursivas con tinte sutil para destacar sobre el texto normal
+    // --- 4.3: Negritas y cursivas ---
     styled.replace("<strong>", "<strong style=\"color: #f5e0dc; font-weight: bold;\">");
     styled.replace("<em>", "<em style=\"color: #bac2de;\">");
 
-    // 4. Listas con espaciado entre ítems (evita que se vean pegadas)
+    // --- 4.4: Listas con espaciado entre ítems ---
     styled.replace("<ul>", "<ul style=\"margin-top: 6px; margin-bottom: 8px; margin-left: 18px;\">");
     styled.replace("<ol>", "<ol style=\"margin-top: 6px; margin-bottom: 8px; margin-left: 18px;\">");
     styled.replace("<li>", "<li style=\"margin-bottom: 6px; line-height: 140%; color: #cdd6f4;\">");
 
-    // 5. Código inline suave (Surface1 #45475a en vez de negro brusco, con texto malva/rosa suave)
+    // --- 4.5: Código inline suave ---
     styled.replace("<code>",
         "<span style=\"background-color: #45475a; color: #f5c2e7; font-family: 'JetBrains Mono', 'Fira Code', monospace; font-size: 12px;\">&nbsp;");
     styled.replace("</code>", "&nbsp;</span>");
 
-    // 6. Enlaces y citas (Blockquotes)
+    // --- 4.6: Enlaces y citas (Blockquotes) ---
     styled.replace("<a href=", "<a style=\"color: #89b4fa; text-decoration: none; font-weight: bold;\" href=");
     styled.replace("<blockquote>",
         "<blockquote style=\"margin-top: 8px; margin-bottom: 8px; margin-left: 10px; padding-left: 10px; color: #a6adc8; font-style: italic;\">");
 
-    // 7. Tablas GFM estilizadas para modo oscuro
+    // --- 4.7: Tablas GFM estilizadas ---
     styled.replace("<table>",
         "<table cellspacing=\"0\" cellpadding=\"8\" style=\"margin-top: 8px; margin-bottom: 10px; border: 1px solid #45475a; background-color: #1e1e2e;\">");
     styled.replace("<th>",
@@ -60,14 +72,18 @@ QString MarkdownParser::styleHtmlForQt(const QString &rawHtml) {
     styled.replace("<td>",
         "<td style=\"color: #cdd6f4; border: 1px solid #313244; padding: 6px 10px;\">");
 
-    // 8. Separadores horizontales
+    // --- 4.8: Separadores horizontales ---
     styled.replace("<hr />", "<hr style=\"background-color: #45475a; height: 1px; border: none; margin-top: 12px; margin-bottom: 12px;\" />");
 
     return styled;
 }
 
+// ============================================================================
+// SECCIÓN 5: RESALTADOR DE SINTAXIS PARA BLOQUES DE CÓDIGO FUENTE
+// ============================================================================
 QString MarkdownParser::highlightCode(const QString &code, const QString &language) {
     QString lang = language.toLower().trimmed();
+    Q_UNUSED(lang);
 
     static const QSet<QString> keywords = {
         "alignas", "alignof", "and", "asm", "auto", "bool", "break", "case", "catch", "char",
@@ -96,7 +112,6 @@ QString MarkdownParser::highlightCode(const QString &code, const QString &langua
         "Q_OBJECT", "Q_PROPERTY", "QML_NAMED_ELEMENT", "Q_INVOKABLE", "signals", "slots"
     };
 
-    // Tokenizador mejorado: incluye <headers>, flags de bash (-o, --build), funciones y operadores
     static const QRegularExpression tokenRegex(
         R"((//[^\n]*|/\*[\s\S]*?\*/|#\s*(?:include|pragma|define|ifdef|ifndef|endif|if|else|elif)\b[^\n]*|#[^\n]*|"(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'|\b[A-Za-z_][A-Za-z0-9_]*(?=\s*\()|\b[A-Za-z_][A-Za-z0-9_]*\b|\b\d+(?:\.\d+)?(?:[fFlLuU]+)?\b|(?:^|\s)(?:--?[A-Za-z0-9_-]+)))",
         QRegularExpression::MultilineOption
@@ -116,12 +131,10 @@ QString MarkdownParser::highlightCode(const QString &code, const QString &langua
         QString token = match.captured(0);
         QString escaped = token.toHtmlEscaped();
 
-        // Comprobar si después del identificador hay un '(' (llamada o declaración de función)
         int endPos = match.capturedEnd();
         bool isFunctionCall = (endPos < code.length() && code.at(endPos) == '(');
 
         if (token.startsWith("//") || token.startsWith("/*")) {
-            // Comentarios en gris pizarra cursiva
             result += QStringLiteral("<span style=\"color:#6c7086; font-style:italic;\">%1</span>").arg(escaped);
         } else if (token.startsWith("#")) {
             static const QRegularExpression cppPrep(R"(^(#\s*(?:include|pragma|define|ifdef|ifndef|endif|if|else|elif)\b)(.*)$)");
@@ -129,29 +142,22 @@ QString MarkdownParser::highlightCode(const QString &code, const QString &langua
             if (prepMatch.hasMatch()) {
                 QString directive = prepMatch.captured(1).toHtmlEscaped();
                 QString rest = prepMatch.captured(2).toHtmlEscaped();
-                // Colorear #include en rosa y <iostream> en verde cadena
                 result += QStringLiteral("<span style=\"color:#f5c2e7; font-weight:bold;\">%1</span><span style=\"color:#a6e3a1;\">%2</span>")
                               .arg(directive, rest);
             } else {
                 result += QStringLiteral("<span style=\"color:#6c7086; font-style:italic;\">%1</span>").arg(escaped);
             }
         } else if (token.startsWith('"') || token.startsWith('\'')) {
-            // Strings en verde suave
             result += QStringLiteral("<span style=\"color:#a6e3a1;\">%1</span>").arg(escaped);
         } else if (token.trimmed().startsWith('-')) {
-            // Flags de terminal (-o, --build) en melocotón/amarillo
             result += QStringLiteral("<span style=\"color:#fab387;\">%1</span>").arg(escaped);
         } else if (token.at(0).isDigit()) {
-            // Números en melocotón
             result += QStringLiteral("<span style=\"color:#fab387;\">%1</span>").arg(escaped);
         } else if (keywords.contains(token)) {
-            // Keywords en malva
             result += QStringLiteral("<span style=\"color:#cba6f7; font-weight:bold;\">%1</span>").arg(escaped);
         } else if (builtinTypes.contains(token) || (token.at(0).isUpper() && token.length() > 1)) {
-            // Tipos estándar y clases Qt en amarillo cálido
             result += QStringLiteral("<span style=\"color:#f9e2af;\">%1</span>").arg(escaped);
         } else if (isFunctionCall) {
-            // Funciones (como main()) en azul cielo
             result += QStringLiteral("<span style=\"color:#89b4fa; font-weight:bold;\">%1</span>").arg(escaped);
         } else {
             result += escaped;
@@ -167,6 +173,34 @@ QString MarkdownParser::highlightCode(const QString &code, const QString &langua
     return QStringLiteral("<pre style=\"margin:0; line-height:135%; font-family:'JetBrains Mono', 'Fira Code', monospace; color:#cdd6f4;\">%1</pre>").arg(result);
 }
 
+// ============================================================================
+// SECCIÓN 6: SANITIZACIÓN DE RESPUESTAS LLM (DESENVOLVER ```markdown EXTERNO)
+// ============================================================================
+static QString unwrapOuterMarkdownFence(QString raw) {
+    QString trimmed = raw.trimmed();
+
+    // 1. Eliminar bloques <think>...</think> cerrados o abiertos al inicio
+    static const QRegularExpression thinkClosedRegex(R"(<think>[\s\S]*?</think>\s*)", QRegularExpression::CaseInsensitiveOption);
+    trimmed.remove(thinkClosedRegex);
+    trimmed = trimmed.trimmed();
+
+    // 2. Si el LLM envolvió toda su respuesta en ```markdown ... ``` o ```md ... ```,
+    // quitar la cerca exterior para que cmark-gfm renderice los encabezados y listas reales.
+    static const QRegularExpression outerMdFenceRegex(
+        R"(^```(?:markdown|md|text|txt)\s*\r?\n([\s\S]*?)(?:\r?\n```)?$)",
+        QRegularExpression::CaseInsensitiveOption
+    );
+    auto match = outerMdFenceRegex.match(trimmed);
+    if (match.hasMatch()) {
+        trimmed = match.captured(1).trimmed();
+    }
+
+    return trimmed;
+}
+
+// ============================================================================
+// SECCIÓN 7: PARSEO DEL AST DE MARKDOWN Y GENERACIÓN DE BLOQUES PARA QML
+// ============================================================================
 void MarkdownParser::setMarkdown(const QString &md) {
     if (m_markdown == md) return;
     m_markdown = md;
@@ -174,10 +208,10 @@ void MarkdownParser::setMarkdown(const QString &md) {
 
     m_blocks.clear();
 
-    QString cleanedMd = md;
-    static const QRegularExpression thinkClosedRegex(R"(<think>[\s\S]*?</think>\s*)", QRegularExpression::CaseInsensitiveOption);
-    cleanedMd.remove(thinkClosedRegex);
+    // --- 7.1: Limpiar etiquetas <think> y cercas ```markdown envolventes ---
+    QString cleanedMd = unwrapOuterMarkdownFence(md);
 
+    // --- 7.2: Inicializar parser cmark-gfm con extensiones ---
     cmark_parser *parser = cmark_parser_new(CMARK_OPT_DEFAULT);
     cmark_parser_attach_syntax_extension(parser, cmark_find_syntax_extension("table"));
     cmark_parser_attach_syntax_extension(parser, cmark_find_syntax_extension("strikethrough"));
@@ -190,6 +224,7 @@ void MarkdownParser::setMarkdown(const QString &md) {
 
     cmark_llist *extensions = cmark_parser_get_syntax_extensions(parser);
 
+    // --- 7.3: Extraer bloques de código anidados dentro de listas o citas ---
     struct ExtractedCode {
         QString language;
         QString content;
@@ -231,6 +266,7 @@ void MarkdownParser::setMarkdown(const QString &md) {
         cmark_node_free(codeNode);
     }
 
+    // --- 7.4: Función auxiliar para volcar fragmentos de texto y código ---
     auto flushHtmlWithMarkers = [&](const QString &htmlChunk) {
         static const QRegularExpression markerRegex(R"((?:<p[^>]*>)?\s*@@FRONTERMIND_CODE_(\d+)@@\s*(?:</p>)?)");
         int lastPos = 0;
@@ -270,6 +306,7 @@ void MarkdownParser::setMarkdown(const QString &md) {
         }
     };
 
+    // --- 7.5: Recorrido de nodos principales del documento ---
     cmark_node *child = cmark_node_first_child(doc);
     QString currentHtml;
 
@@ -281,14 +318,25 @@ void MarkdownParser::setMarkdown(const QString &md) {
             QString codeText = lit ? QString::fromUtf8(lit) : QString();
             while (codeText.endsWith('\n') || codeText.endsWith('\r')) codeText.chop(1);
 
-            if (!codeText.trimmed().isEmpty()) {
+            const char *lang = cmark_node_get_fence_info(child);
+            QString langStr = lang ? QString::fromUtf8(lang).trimmed().split(' ').first() : QString();
+
+            // Si un nodo de código es de tipo "markdown" o "md", renderizar su interior como Markdown real
+            if (langStr.compare("markdown", Qt::CaseInsensitive) == 0 ||
+                langStr.compare("md", Qt::CaseInsensitive) == 0) {
+                QByteArray innerUtf8 = codeText.toUtf8();
+                cmark_node *innerDoc = cmark_parse_document(innerUtf8.constData(), innerUtf8.length(), CMARK_OPT_DEFAULT);
+                char *innerHtml = cmark_render_html(innerDoc, CMARK_OPT_DEFAULT, extensions);
+                if (innerHtml) {
+                    currentHtml += QString::fromUtf8(innerHtml);
+                    free(innerHtml);
+                }
+                cmark_node_free(innerDoc);
+            } else if (!codeText.trimmed().isEmpty()) {
                 if (!currentHtml.trimmed().isEmpty()) {
                     flushHtmlWithMarkers(currentHtml);
                     currentHtml.clear();
                 }
-
-                const char *lang = cmark_node_get_fence_info(child);
-                QString langStr = lang ? QString::fromUtf8(lang).trimmed().split(' ').first() : QString();
 
                 QVariantMap codeBlock;
                 codeBlock["type"] = "code";
